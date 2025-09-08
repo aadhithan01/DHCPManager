@@ -82,6 +82,7 @@
 #include "cosa_apis_util.h"
 #include "cosa_webconfig_api.h"
 #include "util.h"
+//#include "DHCPServerSM.h"
 
 #ifdef DHCPV4_SERVER_SUPPORT
 #include "dhcpv4_server_interface.h"
@@ -3913,6 +3914,27 @@ Server_SetParamStringValue
     UNREFERENCED_PARAMETER(pString);
     UNREFERENCED_PARAMETER(ParamName);
     /* check the parameter name and set the corresponding value */
+/*        if (strcmp(ParamName, "Action") == 0)
+    {
+        if(strcmp(pString,"Start"))
+        {
+            DHCPServerv4_SM_update(DHCP_SERVER_START);
+        }
+        else if(strcmp(pString,"Stop"))
+        {
+            DHCPServerv4_SM_update(DHCP_SERVER_STOP);
+        }
+        else if(strcmp(pString,"Restart"))
+        {
+            DHCPServerv4_SM_update(DHCP_SERVER_RESTART);
+        }
+        else
+        {
+            CcspTraceError(("%s: Invalid Action value %s\n", __FUNCTION__, pString));
+            return FALSE;
+        }
+        return TRUE;
+    }*/
     if (strcmp(ParamName, "StaticClientsData") == 0)
     {
         char * decodeMsg =NULL;

@@ -263,6 +263,299 @@ void* reap_process (void* arg)
   return NULL;
 }
 
+
+CmdLineArgs * deleteCmdLineNode(CmdLineArgs *pHead)
+{
+    if (NULL == pHead)
+    {
+        DHCPMGR_LOG_ERROR("%s:%d,NULL parameter passed\n",__FUNCTION__,__LINE__);
+        return NULL;
+    }
+    CmdLineArgs *pCmdLineArgsTemp = pHead;
+    CmdLineArgs *pCmdLineArgsHead = pHead;
+
+    pCmdLineArgsHead = pCmdLineArgsHead->next;
+    pCmdLineArgsTemp->next = NULL;
+    if (NULL != pCmdLineArgsTemp)
+        free (pCmdLineArgsTemp);
+    return pCmdLineArgsHead;
+}
+
+CmdLineArgs * initCmdLineNode(char *pStr)
+{
+    if (NULL == pStr)
+    {
+        DHCPMGR_LOG_ERROR("%s:%d,NULL parameter passed\n",__FUNCTION__,__LINE__);
+        return NULL;
+    }
+    CmdLineArgs *pCmdLineArgs =(CmdLineArgs*) malloc (sizeof(CmdLineArgs));
+    if (NULL == pCmdLineArgs)
+    {
+        DHCPMGR_LOG_ERROR("%s:%d, Failed to allocate the memory\n",__FUNCTION__,__LINE__);
+        return NULL;
+    }
+    else
+    {
+        memset(pCmdLineArgs, 0, sizeof(CmdLineArgs));
+        pCmdLineArgs->next = NULL;
+        snprintf(pCmdLineArgs->cCmdLineArgs, sizeof(pCmdLineArgs->cCmdLineArgs),"%s",pStr);
+    }
+
+    return pCmdLineArgs;
+}
+
+int insertCmdLineNode(CmdLineArgs **pHead, CmdLineArgs* pNode)
+{
+    if (NULL == pNode)
+    {
+        DHCPMGR_LOG_ERROR("%s:%d,NULL parameter passed\n",__FUNCTION__,__LINE__);
+        return -1;
+    }
+
+    if (NULL == *pHead)
+    {
+        *pHead = pNode;
+    }
+    else
+    {
+        CmdLineArgs *pCmdLineArgsTemp = *pHead;
+        while (NULL != pCmdLineArgsTemp->next)
+            pCmdLineArgsTemp = pCmdLineArgsTemp->next;
+        pCmdLineArgsTemp->next = pNode;
+    }
+
+    return 0;
+}
+
+
+int addCmdLineArg(CmdLineArgs **pHead, char *pArg, int *pCmdLineArgCount)
+{
+    if ((NULL == pArg) || (NULL == pCmdLineArgCount) || (NULL == pHead))
+    {
+        DHCPMGR_LOG_ERROR("%s:%d,NULL parameter passed\n",__FUNCTION__,__LINE__);
+        return -1;
+    }
+
+    CmdLineArgs *pTemp = initCmdLineNode(pArg);
+    if ( NULL == pTemp)
+    {
+        DHCPMGR_LOG_ERROR("%s:%d, Failed to allocate the memory for :%s\n", __FUNCTION__, __LINE__, pArg);
+        return -1;
+    }
+
+    if (!insertCmdLineNode(pHead, pTemp))
+    {
+        *pCmdLineArgCount = *pCmdLineArgCount + 1;
+    }
+
+    return 0;
+}
+
+int addCmdLineArgWithCheck(CmdLineArgs **pHead, char *pArg, const char *pCheckFlag, const char *pCheckValue, int *pCmdLineArgCount)
+{
+    if (NULL == pArg || NULL == pCheckFlag || NULL == pCheckValue || NULL == pHead)
+    {
+        DHCPMGR_LOG_ERROR("%s:%d,NULL parameter passed\n",__FUNCTION__,__LINE__);
+        return -1;
+    }
+
+    if (strncmp(pCheckFlag, "1", 1) == 0 && strncmp(pCheckValue, "1", 1) == 0)
+    {
+        return addCmdLineArg(pHead, pArg, pCmdLineArgCount);
+    }
+
+    return 0;
+}
+
+int updateCmdLineArgs(CommandLineArgs *pCmdLineArgs)
+{
+    char cXdnsRefacCodeEnable     [BUFF_LEN_8]  = {0};
+    char cXdnsEnable              [BUFF_LEN_8]  = {0};
+
+    int  iCmdLineArgCount         = 0;
+    CmdLineArgs *pHeadCmdLineArgs = NULL;
+    CmdLineArgs *pCmdLineArgsTemp = NULL;
+
+    if (NULL == pCmdLineArgs)
+    {
+        DHCPMGR_LOG_ERROR("%s:%d,NULL parameter passed\n",__FUNCTION__,__LINE__);
+        return -1;
+    }
+
+    getRFC_Value (dnsOption);
+    DHCPMGR_LOG_INFO("\n%s Adding DNSMASQ Option: %s\n",__FUNCTION__, dnsOption);
+    strtok(dnsOption,"\n");
+
+    syscfg_get(NULL, "XDNS_RefacCodeEnable", cXdnsRefacCodeEnable, sizeof(cXdnsRefacCodeEnable));
+    syscfg_get(NULL, "X_RDKCENTRAL-COM_XDNS", cXdnsEnable, sizeof(cXdnsEnable));
+
+
+#if defined(_COSA_INTEL_USG_ARM_) && !defined(INTEL_PUMA7) && !defined(_COSA_BCM_ARM_) && !defined(_PLATFORM_IPQ_)
+#ifdef XDNS_ENABLE
+    if (!strncasecmp(g_cXdns_Enabled, "true", 4)) //If XDNS is ENABLED
+    {
+        if (addCmdLineArg(&pHeadCmdLineArgs, "-q", &iCmdLineArgCount) ||
+            addCmdLineArg(&pHeadCmdLineArgs, "--clear-on-reload", &iCmdLineArgCount) ||
+            addCmdLineArg(&pHeadCmdLineArgs, "--bind-dynamic", &iCmdLineArgCount) ||
+            addCmdLineArg(&pHeadCmdLineArgs, "--add-mac", &iCmdLineArgCount) ||
+            addCmdLineArg(&pHeadCmdLineArgs, "--add-cpe-id=abcdefgh", &iCmdLineArgCount) ||
+            addCmdLineArg(&pHeadCmdLineArgs, "-P", &iCmdLineArgCount) ||
+            addCmdLineArg(&pHeadCmdLineArgs, "4096", &iCmdLineArgCount) ||
+            addCmdLineArg(&pHeadCmdLineArgs, "-C", &iCmdLineArgCount) ||
+            addCmdLineArg(&pHeadCmdLineArgs, DHCP_CONF, &iCmdLineArgCount) ||
+        {
+            return -1;
+        }
+        if (0 < strlen(dnsOption))
+        {
+            if (addCmdLineArg(&pHeadCmdLineArgs, dnsOption, &iCmdLineArgCount))
+            {
+                return -1;
+            }
+        }
+        if(addCmdLineArgWithCheck(&pHeadCmdLineArgs, "--xdns-refac-code", cXdnsRefacCodeEnable, cXdnsEnable, &iCmdLineArgCount))
+        {
+            return -1;
+        }
+    }
+    else //If XDNS is not enabled
+#endif
+    {
+        if (addCmdLineArg(&pHeadCmdLineArgs, "-P", &iCmdLineArgCount) ||
+            addCmdLineArg(&pHeadCmdLineArgs, "4096", &iCmdLineArgCount) ||
+            addCmdLineArg(&pHeadCmdLineArgs, "-C", &iCmdLineArgCount) ||
+            addCmdLineArg(&pHeadCmdLineArgs, DHCP_CONF, &iCmdLineArgCount) )
+        {
+            return -1;
+        }
+        if (0 < strlen(dnsOption))
+        {
+            if (addCmdLineArg(&pHeadCmdLineArgs, dnsOption, &iCmdLineArgCount))
+            {
+                return -1;
+            }
+        }
+    }
+#else
+#ifdef XDNS_ENABLE
+    char *pXdnsEnable               = NULL;
+    char *pBoxType                  = NULL;
+    char cDnsSecFlag   [BUFF_LEN_8] = {0};
+
+    getValueFromDevicePropsFile("XDNS_ENABLE", &pXdnsEnable);
+    getValueFromDevicePropsFile("MODEL_NUM", &pBoxType);
+    DHCPMGR_LOG_INFO("\n%s Inside non XB3 block  g_cXdns_Enabled=%s XDNS_Enable=%s Box_Type=%s.......\n",__FUNCTION__,g_cXdns_Enabled,pXdnsEnable,pBoxType);
+    if (!strncasecmp(g_cXdns_Enabled, "true", 4) || !strncasecmp(pXdnsEnable, "true", 4)) //If XDNS is ENABLED
+    {
+        if (addCmdLineArg(&pHeadCmdLineArgs, "-q", &iCmdLineArgCount) ||
+            addCmdLineArg(&pHeadCmdLineArgs, "--clear-on-reload", &iCmdLineArgCount) ||
+            addCmdLineArg(&pHeadCmdLineArgs, "--bind-dynamic", &iCmdLineArgCount) ||
+            addCmdLineArg(&pHeadCmdLineArgs, "--add-mac", &iCmdLineArgCount) ||
+            addCmdLineArg(&pHeadCmdLineArgs, "--add-cpe-id=abcdefgh", &iCmdLineArgCount) ||
+            addCmdLineArg(&pHeadCmdLineArgs, "-P", &iCmdLineArgCount) ||
+            addCmdLineArg(&pHeadCmdLineArgs, "4096", &iCmdLineArgCount) ||
+            addCmdLineArg(&pHeadCmdLineArgs, "-C", &iCmdLineArgCount) ||
+            addCmdLineArg(&pHeadCmdLineArgs, DHCP_CONF, &iCmdLineArgCount) )
+        {
+            return -1;
+        }
+        if (0 < strlen(dnsOption))
+        {
+            if (addCmdLineArg(&pHeadCmdLineArgs, dnsOption, &iCmdLineArgCount))
+            {
+                return -1;
+            }
+        }
+        if(addCmdLineArg(&pHeadCmdLineArgs, "--dhcp-authoritative", &iCmdLineArgCount))
+        {
+            return -1;
+        }
+        syscfg_get(NULL, "XDNS_DNSSecEnable", cDnsSecFlag, sizeof(cDnsSecFlag));
+        if ((!strncmp(pBoxType, "CGA4332COM", 10) || !strncmp(pBoxType, "CGA4131COM", 10)) && !strncasecmp(cXdnsEnable, "1", 1) && !strncasecmp(cDnsSecFlag, "1", 1))
+        {
+            if (addCmdLineArg(&pHeadCmdLineArgs, "--proxy-dnssec", &iCmdLineArgCount) ||
+                addCmdLineArg(&pHeadCmdLineArgs, "--cache-size=0", &iCmdLineArgCount))
+            {
+                return -1;
+            }
+            if (!strncmp(cXdnsRefacCodeEnable, "1", 1))
+            {
+                if (addCmdLineArg(&pHeadCmdLineArgs, "--xdns-refac-code", &iCmdLineArgCount))
+                {
+                    return -1;
+                }
+            }
+            else
+            {
+                if (addCmdLineArg(&pHeadCmdLineArgs, "--stop-dns-rebind", &iCmdLineArgCount) ||
+                    addCmdLineArg(&pHeadCmdLineArgs, "--log-facility=/rdklogs/logs/dnsmasq.log", &iCmdLineArgCount))
+                {
+                    return -1;
+                }
+            }
+        }
+        else
+        {
+            if (addCmdLineArgWithCheck(&pHeadCmdLineArgs, "--xdns-refac-code", cXdnsRefacCodeEnable, cXdnsEnable, &iCmdLineArgCount))
+            {
+                return -1;
+            }
+            if (addCmdLineArg(&pHeadCmdLineArgs, "--stop-dns-rebind", &iCmdLineArgCount) ||
+                addCmdLineArg(&pHeadCmdLineArgs, "--log-facility=/rdklogs/logs/dnsmasq.log", &iCmdLineArgCount))
+            {
+                return -1;
+            }
+        }
+    }
+    else // XDNS not enabled
+#endif
+    {
+        if (addCmdLineArg(&pHeadCmdLineArgs, "-P", &iCmdLineArgCount) ||
+            addCmdLineArg(&pHeadCmdLineArgs, "4096", &iCmdLineArgCount) ||
+            addCmdLineArg(&pHeadCmdLineArgs, "-C", &iCmdLineArgCount) ||
+            addCmdLineArg(&pHeadCmdLineArgs, DHCP_CONF, &iCmdLineArgCount))
+        {
+            return -1;
+        }
+    }
+#endif
+    if (0 < iCmdLineArgCount)
+    {
+        pCmdLineArgs->iNumOfArgs    = iCmdLineArgCount;
+        pCmdLineArgs->ppCmdLineArgs = malloc (sizeof(char*) * iCmdLineArgCount);
+        if ((NULL != pCmdLineArgs->ppCmdLineArgs) && (NULL != pHeadCmdLineArgs))
+        {
+            pCmdLineArgsTemp = pHeadCmdLineArgs;
+            for (int iCount = 0; iCount < iCmdLineArgCount; iCount++)
+            {
+                int iSize = strlen(pCmdLineArgsTemp->cCmdLineArgs)+1;
+                pCmdLineArgs->ppCmdLineArgs[iCount] = malloc (iSize * sizeof(char));
+                if (NULL != pCmdLineArgs->ppCmdLineArgs[iCount])
+                {
+                    memset(pCmdLineArgs->ppCmdLineArgs[iCount], 0, iSize);
+                    snprintf(pCmdLineArgs->ppCmdLineArgs[iCount], iSize, "%s", pCmdLineArgsTemp->cCmdLineArgs);
+                    //DHCPMGR_LOG_ERROR("%s:%d, pCmdLineArgsTemp->cCmdLineArgs[%d] = %s\n",__FUNCTION__,__LINE__,iCount,pCmdLineArgsTemp->cCmdLineArgs);
+                    //DHCPMGR_LOG_ERROR("%s:%d, pCmdLineArgs->ppCmdLineArgs[%d] = %s\n",__FUNCTION__,__LINE__,iCount,pCmdLineArgs->ppCmdLineArgs[iCount]);
+                }
+                else
+                {
+                    DHCPMGR_LOG_ERROR("%s:%d, Failed to allocate the memory\n", __FUNCTION__,__LINE__);
+                    return -1;
+                }
+                pCmdLineArgsTemp = deleteCmdLineNode(pCmdLineArgsTemp);
+                if (NULL == pCmdLineArgsTemp)
+                    break;
+            }
+        }
+        else
+        {
+            DHCPMGR_LOG_ERROR("%s:%d, Failed to allocate the memory\n", __FUNCTION__,__LINE__);
+            return -1;
+        }
+    }
+    return 0;
+}
+
 int dnsmasq_server_start()
 {
     char l_cSystemCmd[255] = {0};
@@ -394,22 +687,75 @@ int dnsmasq_server_start()
     }
     return 0;
 }
+DHCP_SERVER_STATE DhcpServer_Stopping(GlobalDhcpConfig *sGlbDhcpCfg)
+{
+    char l_cSystemCmd[255] = {0};
+    int l_iSystem_Res;
+
+    errno_t safec_rc = -1;
+
+
+#ifdef RDKB_EXTENDER_ENABLED
+    if (Get_Device_Mode() == EXTENDER_MODE)
+    {
+        // Device is extender, check if ipv4 and mesh link are ready
+        char l_cMeshWanLinkStatus[16] = {0};
+
+        ifl_get_event("mesh_wan_linkstatus", l_cMeshWanLinkStatus, sizeof(l_cMeshWanLinkStatus));
+
+        if (strncmp(l_cMeshWanLinkStatus, "up", 2) != 0)
+        {
+            DHCPMGR_LOG_ERROR("mesh_wan_linkstatus and ipv4_connection_state is not up");
+            return DHCP_SERVER_STATE_RUNNING; // TODO LIST for DHCP-LAN Intergration
+        }
+    }
+#endif
+
+    // dns is always running
+    prepare_hostname();
+    DHCPMGR_LOG_INFO("%s:%d, updating dnsmasq.conf file with dns_only", __FUNCTION__, __LINE__);
+
+    safec_rc = sprintf_s(l_cSystemCmd, sizeof(l_cSystemCmd), "%s unsetproc dhcp_server", PMON);
+    if (safec_rc < EOK)
+    {
+        ERR_CHK(safec_rc);
+    }
+    l_iSystem_Res = v_secure_system("%s", l_cSystemCmd); // dnsmasq command
+    if (0 != l_iSystem_Res)
+    {
+        DHCPMGR_LOG_ERROR("%s:%d %s command didn't execute successfully", __FUNCTION__, __LINE__, l_cSystemCmd);
+    }
+
+    ifl_set_event("dns-status", "stopped");
+    dhcpServerStop(NULL, 0);
+    if (false == dhcpServerStart(&sGlbDhcpCfg))
+    {
+        DHCPMGR_LOG_ERROR("%s:%d, dnsmasq did not start\n",__FUNCTION__,__LINE__);
+    }
+    else
+    {
+        ifl_set_event("dns-status", "started");
+        DHCPMGR_LOG_INFO("%s:%d DHCP Server DNSMASQ started successfully\n", __FUNCTION__, __LINE__);
+    }
+//    freeMemoryDHCP(NULL, 0, &sGlbDhcpCfg);
+    return DHCP_SERVER_STATE_STOPPED;
+}
 
 void dhcp_server_stop()
 {
     char l_cDhcp_Status[16] = {0}, l_cSystemCmd[255] = {0};
     int l_iSystem_Res;
     errno_t safec_rc = -1;
-    DHCPMGR_LOG_INFO("\n Waiting for dhcp server end state");
+    DHCPMGR_LOG_INFO("Waiting for dhcp server end state");
 
     wait_till_end_state("dhcp_server");
-    DHCPMGR_LOG_INFO("\n dhcp server ended");
+    DHCPMGR_LOG_INFO("dhcp server ended");
 
-    ifl_get_event( "dhcp_server-status", l_cDhcp_Status, sizeof(l_cDhcp_Status));
+    ifl_get_event("dhcp_server-status", l_cDhcp_Status, sizeof(l_cDhcp_Status));
     if (!strncmp(l_cDhcp_Status, "stopped", 7))
     {
-            DHCPMGR_LOG_INFO("DHCP SERVER is already stopped not doing anything");
-            return;
+        DHCPMGR_LOG_INFO("DHCP SERVER is already stopped not doing anything");
+        return;
     }
 
 #ifdef RDKB_EXTENDER_ENABLED
@@ -418,54 +764,54 @@ void dhcp_server_stop()
         // Device is extender, check if ipv4 and mesh link are ready
         char l_cMeshWanLinkStatus[16] = {0};
 
-        ifl_get_event( "mesh_wan_linkstatus", l_cMeshWanLinkStatus, sizeof(l_cMeshWanLinkStatus));
+        ifl_get_event("mesh_wan_linkstatus", l_cMeshWanLinkStatus, sizeof(l_cMeshWanLinkStatus));
 
-        if ( strncmp(l_cMeshWanLinkStatus, "up", 2) != 0 )
+        if (strncmp(l_cMeshWanLinkStatus, "up", 2) != 0)
         {
-            fprintf(stderr, "mesh_wan_linkstatus and ipv4_connection_state is not up\n");
+            DHCPMGR_LOG_ERROR("mesh_wan_linkstatus and ipv4_connection_state is not up");
             return;
         }
     }
 #endif
 
-    //dns is always running
+    // dns is always running
     prepare_hostname();
     prepare_dhcp_conf("dns_only");
 
-    safec_rc = sprintf_s(l_cSystemCmd, sizeof(l_cSystemCmd),"%s unsetproc dhcp_server", PMON);
+    safec_rc = sprintf_s(l_cSystemCmd, sizeof(l_cSystemCmd), "%s unsetproc dhcp_server", PMON);
     ERR_CHK(safec_rc);
 
-    l_iSystem_Res = v_secure_system("%s",l_cSystemCmd); //dnsmasq command
+    l_iSystem_Res = v_secure_system("%s", l_cSystemCmd); // dnsmasq command
 
     if (0 != l_iSystem_Res)
     {
-        DHCPMGR_LOG_INFO("%s command didnt execute successfully", l_cSystemCmd);
+        DHCPMGR_LOG_ERROR("%s command didn't execute successfully", l_cSystemCmd);
     }
 
-    ifl_set_event( "dns-status", "stopped");
+    ifl_set_event("dns-status", "stopped");
     v_secure_system("killall `basename dnsmasq`");
 
-    if (access(PID_FILE, F_OK) == 0) {
+    if (access(PID_FILE, F_OK) == 0)
+    {
         remove_file(PID_FILE);
     }
 
-    ifl_set_event( "dhcp_server-status", "stopped");
+    ifl_set_event("dhcp_server-status", "stopped");
 
     memset(l_cSystemCmd, 0x00, sizeof(l_cSystemCmd));
 
-    l_iSystem_Res = dnsmasq_server_start(); //dnsmasq command
+    l_iSystem_Res = dnsmasq_server_start(); // dnsmasq command
 
     if (0 == l_iSystem_Res)
     {
         DHCPMGR_LOG_INFO("dns-server started successfully");
-        ifl_set_event( "dns-status", "started");
+        ifl_set_event("dns-status", "started");
     }
     else
     {
-        DHCPMGR_LOG_INFO("dns-server didnt start");
+        DHCPMGR_LOG_ERROR("dns-server didn't start");
     }
 }
-
 
 BOOL IsDhcpConfHasInterface(void)
 {
@@ -652,6 +998,269 @@ void syslog_restart_request(void* arg)
     }
     return;
 }
+
+DHCP_SERVER_STATE DhcpServer_Starting (char *input,GlobalDhcpConfig *sGlbDhcpCfg)
+{
+    DHCPMGR_LOG_INFO("Inside function with arg %s",input);
+    //Declarations
+    char l_cDhcpServerEnable[16] = {0}, l_cLanStatusDhcp[16] = {0};
+    char l_cSystemCmd[255] = {0}, l_cPsm_Mode[8] = {0}, l_cStart_Misc[8] = {0};
+    char l_cDhcp_Tmp_Conf[32] = {0};
+    char l_cRpc_Cmd[64] = {0};
+    char l_cBridge_Mode[8] = {0};
+    char l_cDhcp_Server_Prog[16] = {0};
+    int dhcp_server_progress_count = 0;
+
+    int l_iSystem_Res;
+    //int fd = 0;
+
+    errno_t safec_rc = -1;
+
+    service_dhcp_init();
+
+    // DHCP Server Enabled
+    syscfg_get(NULL, "dhcp_server_enabled", l_cDhcpServerEnable, sizeof(l_cDhcpServerEnable));
+
+    if (!strncmp(l_cDhcpServerEnable, "0", 1))
+    {
+        //when disable dhcp server in gui, we need remove the corresponding process in backend,
+        // or the dhcp server still work.
+        DHCPMGR_LOG_INFO("DHCP Server is disabled not proceeding further");
+        dhcp_server_stop();
+        remove_file("/var/tmp/lan_not_restart");
+ //       ifl_set_event("dhcp_server-status", "error");
+
+ //       ifl_set_event("dhcp_server-errinfo", "dhcp server is disabled by configuration");
+        return DHCP_SERVER_STATE_DISABLED;
+    }
+
+#ifdef RDKB_EXTENDER_ENABLED
+    if (Get_Device_Mode() == EXTENDER_MODE)
+    {
+        // Device is extender, check if ipv4 and mesh link are ready
+        char l_cMeshWanLinkStatus[16] = {0};
+
+        ifl_get_event( "mesh_wan_linkstatus", l_cMeshWanLinkStatus, sizeof(l_cMeshWanLinkStatus));	
+    
+        if ( strncmp(l_cMeshWanLinkStatus, "up", 2) != 0 )
+        {
+            fprintf(stderr, "mesh_wan_linkstatus and ipv4_connection_state is not up\n");
+            return DHCP_SERVER_STATE_ERROR;
+        }
+    }
+#endif
+
+    ifl_get_event("bridge_mode", l_cBridge_Mode,
+                         sizeof(l_cBridge_Mode));
+    //LAN Status DHCP
+    {
+       ifl_ret ret = ifl_get_event( "lan_status-dhcp", l_cLanStatusDhcp, sizeof(l_cLanStatusDhcp));
+       DHCPMGR_LOG_INFO("SERVICE DHCP: lan_status-dhcp value: %s", l_cLanStatusDhcp);
+
+       if (IFL_SYSEVENT_ERROR == ret || strncmp(l_cLanStatusDhcp, "started", 7))
+       {
+           err_counter++;
+
+           if (access("/tmp/DHCPMgr_restarted.txt", F_OK))
+           {
+               if (err_counter > 2)
+               {
+                   DHCPMGR_LOG_WARNING("Restarting DHCP Mgr due to sysevent server error !!!");
+                   copy_file("/rdklogs/logs/DHCPMGRLog.txt.0", "/tmp/DHCPMgr_restarted.txt");
+                   exit(0);
+               }
+               else
+               {
+                   DHCPMGR_LOG_INFO("Giving one more chance for sysevent to recover...!");
+               }
+           }
+           else
+           {
+               DHCPMGR_LOG_WARNING("Skip restarting DHCP Mgr...\n");
+           }
+       }
+    }
+    /***/
+
+    if (strncmp(l_cLanStatusDhcp, "started", 7) && ( 0 == atoi(l_cBridge_Mode) ) )
+    {
+        DHCPMGR_LOG_INFO("lan_status-dhcp is not started return without starting DHCP server");
+        remove_file("/var/tmp/lan_not_restart");
+        return DHCP_SERVER_STATE_ERROR;
+    }
+
+    ifl_get_event( "dhcp_server-progress", l_cDhcp_Server_Prog, sizeof(l_cDhcp_Server_Prog));
+    while((!(strncmp(l_cDhcp_Server_Prog, "inprogress", 10))) && (dhcp_server_progress_count < 5))
+    {
+        DHCPMGR_LOG_INFO("SERVICE DHCP : dhcp_server-progress is inprogress , waiting... ");
+        sleep(2);
+        ifl_get_event( "dhcp_server-progress", l_cDhcp_Server_Prog, sizeof(l_cDhcp_Server_Prog));
+        dhcp_server_progress_count++;
+    }
+
+    ifl_set_event( "dhcp_server-progress", "inprogress");
+    DHCPMGR_LOG_INFO("SERVICE DHCP : dhcp_server-progress is set to inProgress from %s ",__FUNCTION__);
+//    ifl_set_event( "dhcp_server-errinfo", "");
+
+    strncpy(l_cDhcp_Tmp_Conf, "/tmp/dnsmasq.conf.orig", sizeof(l_cDhcp_Tmp_Conf));
+    if (access(DHCP_CONF, F_OK) == 0) {
+        copy_file(DHCP_CONF, l_cDhcp_Tmp_Conf);
+    }
+
+    prepare_hostname();
+
+    // TCCBR:4710- In Bridge mode, Dont run dnsmasq when there is no interface in dnsmasq.conf
+    if ((strncmp(l_cBridge_Mode, "0", 1)) && (FALSE == IsDhcpConfHasInterface()))
+    {
+        DHCPMGR_LOG_INFO("no interface present in dnsmasq.conf %s process not started", SERVER);
+        safec_rc = sprintf_s(l_cSystemCmd, sizeof(l_cSystemCmd),"%s unsetproc dhcp_server", PMON);
+        ERR_CHK(safec_rc);
+
+        l_iSystem_Res = v_secure_system("%s",l_cSystemCmd); //dnsmasq command
+        if (0 != l_iSystem_Res)
+        {
+            DHCPMGR_LOG_INFO("%s command didnt execute successfully", l_cSystemCmd);
+        }
+//        ifl_set_event( "dhcp_server-status", "stopped");
+        ifl_set_event( "dhcp_server-progress", "completed");
+        remove_file("/var/tmp/lan_not_restart");
+//        freeMemoryDHCP(NULL, 0, &sGlbDhcpCfg);
+        return DHCP_SERVER_STATE_STOPPED;
+    }
+#if defined _BWG_NATIVE_TO_RDKB_REQ_
+    /*Run script to resolve the IP address when upgrade from native to rdkb case only */
+    v_secure_system("sh /etc/utopia/service.d/migration_native_rdkb.sh ");
+#endif
+    
+    if (false == dhcpServerStart (&sGlbDhcpCfg))
+    {
+    DHCPMGR_LOG_INFO( "%s:%d, Restart not required\n",__FUNCTION__,__LINE__);
+//    ifl_set_event("dhcp_server-status", "started");
+    ifl_set_event("dhcp_server-progress", "completed");
+    remove_file("/var/tmp/lan_not_restart");
+//    freeMemoryDHCP(NULL, 0, &sGlbDhcpCfg);
+    return DHCP_SERVER_STATE_STARTED;
+    }
+    else
+    {
+    DHCPMGR_LOG_INFO("DHCP Server started successfully\n");
+//    freeMemoryDHCP(NULL, 0, &sGlbDhcpCfg);
+    }
+
+//    freeMemoryDHCP(NULL, 0, &sGlbDhcpCfg);
+
+    ifl_get_event( "system_psm_mode", l_cPsm_Mode, sizeof(l_cPsm_Mode));
+    ifl_get_event( "start-misc", l_cStart_Misc, sizeof(l_cStart_Misc));
+    if (strcmp(l_cPsm_Mode, "1")) //PSM Mode is Not 1
+    {
+        if (access("/var/tmp/.refreshlan", F_OK) == 0 )   //TO DO refreshlan not set in dhcpmgr_udhcpc_plugin
+        {
+
+        #ifdef RDKB_EXTENDER_ENABLED
+                if (Get_Device_Mode() == ROUTER)
+                {
+                    DHCPMGR_LOG_ERROR("refreshlan : Call gw_lan_refresh_from_dhcpscript:!\n");
+                    print_with_uptime("RDKB_SYSTEM_BOOT_UP_LOG : Call gw_lan_refresh_from_dhcpscript:");
+                    v_secure_system("gw_lan_refresh &");
+                    remove_file("/var/tmp/.refreshlan");
+                }
+        #else
+            {
+                DHCPMGR_LOG_ERROR("refreshlan : Call gw_lan_refresh_from_dhcpscript:!\n");
+                print_with_uptime("RDKB_SYSTEM_BOOT_UP_LOG : Call gw_lan_refresh_from_dhcpscript:");
+                v_secure_system("gw_lan_refresh &");
+                remove_file("/var/tmp/.refreshlan");
+            }
+        #endif    
+        }
+
+        if ((access("/var/tmp/lan_not_restart", F_OK) == -1 && errno == ENOENT) &&
+            ((NULL == input) || (NULL != input && strncmp(input, "lan_not_restart", 15))))
+        {
+            if (!strncmp(l_cStart_Misc, "ready", 5))
+            {
+                print_with_uptime("RDKB_SYSTEM_BOOT_UP_LOG : Call gw_lan_refresh_from_dhcpscript:");
+                #ifdef RDKB_EXTENDER_ENABLED
+                if (Get_Device_Mode() == ROUTER)
+                {
+                    v_secure_system("gw_lan_refresh &");
+                }
+                #else
+                v_secure_system("gw_lan_refresh &");
+                #endif
+            }
+        }
+        else
+        {
+            DHCPMGR_LOG_INFO("lan_not_restart found! Don't restart lan!");
+            remove_file("/var/tmp/lan_not_restart");
+        }
+    }
+
+    FILE *fp = fopen( "/tmp/dhcp_server_start", "r");
+    if( NULL == fp )
+    {
+        print_with_uptime("dhcp_server_start is called for the first time private LAN initization is complete");
+        fp = fopen( "/tmp/dhcp_server_start", "w+");
+        if ( NULL == fp) // If file not present
+        {
+            DHCPMGR_LOG_ERROR("File: /tmp/dhcp_server_start creation failed with error:%d", errno);
+        }
+        else
+        {
+            fclose(fp);
+        }
+        print_uptime("boot_to_ETH_uptime",NULL, NULL);
+        print_with_uptime("LAN initization is complete notify SSID broadcast");
+        #if (defined _COSA_INTEL_XB3_ARM_)
+        snprintf(l_cRpc_Cmd, sizeof(l_cRpc_Cmd), "rpcclient %s \"/bin/touch /tmp/.advertise_ssids\"", g_cAtom_Arping_IP);
+        #else
+        snprintf(l_cRpc_Cmd, sizeof(l_cRpc_Cmd), "touch /tmp/.advertise_ssids");
+        #endif
+        executeCmd(l_cRpc_Cmd);
+    }
+    else
+    {
+        fclose(fp);
+    }
+
+    // This function is called for brlan0 and brlan1
+    // If brlan1 is available then XHS service is available post all DHCP configuration
+    if (is_iface_present(XHS_IF_NAME))
+    {
+        FILE *fp = fopen( "/tmp/xhome_start", "r");
+        if( NULL == fp )
+        {
+            fp = fopen( "/tmp/xhome_start", "w+");
+            if ( NULL == fp)
+            {
+                DHCPMGR_LOG_ERROR("File: /tmp/xhome_start creation failed with error:%d", errno);
+            }
+            else
+            {
+                fclose(fp);
+            }
+            print_uptime("boot_to_XHOME_uptime",NULL, NULL);
+        }
+        else
+        {
+            fclose(fp);
+        }
+    }
+    else
+    {
+        DHCPMGR_LOG_INFO("Xfinityhome service is not UP yet");
+    }
+
+    ifl_set_event( "dns-status", "started");
+    ifl_set_event( "dhcp_server-progress", "completed");
+    print_with_uptime("DHCP SERVICE :dhcp_server-progress_is_set_to_completed:");
+    DHCPMGR_LOG_INFO("RDKB_DNS_INFO is : -------  resolv_conf_dump  -------");
+    print_file(RESOLV_CONF);
+    DHCPMGR_LOG_INFO("function ENDS");
+    return DHCP_SERVER_STATE_STARTED;
+}
+
 
 int dhcp_server_start (char *input)
 {

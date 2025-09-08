@@ -16,8 +16,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
 */
-
+#ifndef service_dhcp_server
+#define service_dhcp_server
 #include <stdbool.h>
+#include "dhcp_server_v4_apis.h"
 #define INET6_ADDRSTRLEN    46
 /*erouter topology mode*/
 enum tp_mod {
@@ -45,6 +47,34 @@ typedef enum {
 unsigned int Get_Device_Mode();
 #endif
 
+
+/*typedef enum
+{
+    DHCP_SERVER_START = 0,
+    DHCP_SERVER_STOP,
+    DHCP_SERVER_RESTART,
+} DHCP_SERVER_TYPE;
+*/
+typedef enum
+{
+    DHCP_SERVER_STATE_PREPARING = 0,
+    DHCP_SERVER_STATE_READY,
+    DHCP_SERVER_STATE_STARTING,
+    DHCP_SERVER_STATE_STARTED,
+    DHCP_SERVER_STATE_RUNNING,
+    DHCP_SERVER_STATE_STOPPING,
+    DHCP_SERVER_STATE_STOPPED,
+    DHCP_SERVER_STATE_DISABLED,
+    DHCP_SERVER_STATE_BRIDGE_MODE,
+    DHCP_SERVER_STATE_ERROR,
+} DHCP_SERVER_STATE;
+
+typedef struct _cmdLineArgs_
+{
+    char cCmdLineArgs [BUFF_LEN_64];
+    struct _cmdLineArgs_ * next;
+}CmdLineArgs;
+
 void dhcp_server_stop();
 int dhcp_server_start(char *);
 //void dhcp_server_restart();
@@ -59,3 +89,7 @@ int serv_ipv6_term();
 int return_dibbler_server_pid ();
 void syslog_restart_request(void*);
 void resync_to_nonvol(char *);
+int updateCmdLineArgs(CommandLineArgs *pCmdLineArgs);
+DHCP_SERVER_STATE DhcpServer_Starting (char *input,GlobalDhcpConfig *sGlbDhcpCfg);
+DHCP_SERVER_STATE DhcpServer_Stopping(GlobalDhcpConfig *sGlbDhcpCfg);
+#endif

@@ -251,6 +251,7 @@ AC_CONFIG_FILES(
         source/DHCPServerUtils/Makefile
         source/DHCPServerUtils/DHCPv4Server/Makefile
         source/DHCPServerUtils/DHCPv6Server/Makefile
+        source/DHCPServerUtils/DHCPServerSM/Makefile
         source/DHCPServerUtils/utils/Makefile
         source/DHCPClientUtils/Makefile
         source/DHCPClientUtils/DHCPv4Client/Makefile

@@ -19,6 +19,62 @@
 
 #ifndef  _DHCP_SERVER_FUNCTIONS_H
 #define  _DHCP_SERVER_FUNCTIONS_H
+
+#include <dhcp_server_v4_apis.h>
+#include "lan_manager_interface.h"
+
+typedef enum _NodeType_
+{
+    DHCP_OPTION,
+    DHCP_VENDOR_CLASS,
+    DOMAIN_SPECIFIC_ADDRESS,
+    REDIRECTION_ADDRESS,
+    DHCP_INTERFACE_CONFIG
+}NodeType;
+
+//error codes this API can generate.
+/*typedef enum _dhcpmgrrError
+{
+    //Generic error codes
+    DHCPMGR_STATUS_FAILURE                            = 1,
+    DHCPMGR_STATUS_SUCCESS                            = RBUS_ERROR_SUCCESS,                       
+    DHCPMGR_STATUS_BUS_ERROR                          = RBUS_ERROR_BUS_ERROR,                    
+    DHCPMGR_STATUS_INVALID_INPUT                       = RBUS_ERROR_INVALID_INPUT               
+} dhcpmgrError_t; */
+
+typedef struct _dhcpIfaces_
+{
+    DhcpInterfaceConfig sDhcpIfcfg;
+    struct _dhcpIfaces_ * next;
+}DhcpIfaces;
+
+typedef struct _dhcpOptions_
+{
+    char cDhcpOptions      [BUFF_LEN_64];
+    struct _dhcpOptions_ * next;
+}DhcpOptionsList;
+
+typedef struct _dhcpVendorClass_
+{
+    char cVendorClass      [BUFF_LEN_64];
+    struct _dhcpVendorClass_ * next;
+}DhcpVendorClassList;
+
+typedef struct _domainAddr_
+{
+    char cDomainSpecificAddr  [BUFF_LEN_64];
+    struct _domainAddr_ *     next;
+}DomainAddress;
+
+typedef struct _redirectionAddress_
+{
+    char cRedirectionAddr          [BUFF_LEN_128];
+    struct _redirectionAddress_  * next;
+}RedirectionAddress;
+
+int Construct_dhcp_configuration(DhcpInterfaceConfig ** ppHeadDhcpIf, int  pDhcpIfacesCount, char * pInput, GlobalDhcpConfig *pGlbDhcpCfg, LanConfig *pLanConfigs);
+int  fillInterfaceDetails(DhcpIfaces *pDhcpIfaces, int iDhcpIfacesCount, DhcpInterfaceConfig ***ppDhcpCfgs);
+void freeMemoryDHCP(DhcpInterfaceConfig **ppDhcpCfgs, int iDhcpIfCount, GlobalDhcpConfig * pGlbDhcpCfg);
 int prepare_hostname();
 void calculate_dhcp_range (FILE *local_dhcpconf_file, char *prefix);
 void prepare_dhcp_conf_static_hosts();

@@ -47,7 +47,6 @@
 #define DHCP_OPTIONS_FILE       "/var/dhcp_options"
 #define WAN_IF_NAME             "erouter0"
 #define RESOLV_CONF             "/etc/resolv.conf"
-#define BOOL                    int
 #define TRUE                    1
 #define FALSE                   0
 #define STATIC_URLS_FILE        "/etc/static_urls"
@@ -92,6 +91,19 @@ extern void remove_file(char *);
 extern unsigned int mask2cidr(char *subnetMask);
 
 static unsigned int isValidSubnetMask(char *subnetMask);
+
+typedef struct {
+    char cDhcpOptions [BUFF_LEN_256];
+}DhcpOptionsArray;
+
+DhcpOptionsArray dhcpOptionsArray[] = {
+        {"vendor:Plume,43,tag=123"},
+        {"vendor:PP203X,43,tag=123"},
+        {"vendor:HIXE12AWR,43,tag=123"},
+        {"vendor:WNXE12AWR,43,tag=123"},
+        {"vendor:SE401,43,tag=123"},
+        {"vendor:WNXL11BWL,43,tag=123"},
+    };
 
 enum interface{
     ExistWithSameRange,
@@ -175,6 +187,1914 @@ static int isValidLANIP(const char* ipStr)
                 return 0;
         }
         return 1;
+}
+
+void * deleteNode(void *pHead, NodeType eNodeType)
+{
+    void * pVoid = NULL;
+    if (NULL == pHead)
+    {
+        DHCPMGR_LOG_ERROR("%s:%d,NULL parameter passed\n",__FUNCTION__,__LINE__);
+        return NULL;
+    }
+    switch(eNodeType)
+    {
+        case DHCP_OPTION:
+        {
+            DhcpOptionsList *pDhcpOptionsTemp = (DhcpOptionsList*)pHead;
+            DhcpOptionsList *pDhcpOptionsHead = (DhcpOptionsList*)pHead;
+
+            pDhcpOptionsHead = pDhcpOptionsHead->next;
+            pDhcpOptionsTemp->next = NULL;
+            if (NULL != pDhcpOptionsTemp)
+                free (pDhcpOptionsTemp);
+            pVoid = (DhcpOptionsList*)pDhcpOptionsHead;
+            break;
+        }
+        case DHCP_VENDOR_CLASS:
+        {
+            DhcpVendorClassList *pDhcpVendorClassHead = (DhcpVendorClassList*)pHead;
+            DhcpVendorClassList *pDhcpVendorClassTemp = (DhcpVendorClassList*)pHead;
+
+            pDhcpVendorClassHead = pDhcpVendorClassHead->next;
+            pDhcpVendorClassTemp->next = NULL;
+            if (NULL != pDhcpVendorClassTemp)
+                free (pDhcpVendorClassTemp);
+            pVoid = (DhcpVendorClassList*)pDhcpVendorClassHead;
+            break;
+        }
+        case DOMAIN_SPECIFIC_ADDRESS:
+        {
+            DomainAddress *pDomainSpecificAddrHead = (DomainAddress*)pHead;
+            DomainAddress *pDomainSpecificAddrTemp = (DomainAddress*)pHead;
+
+            pDomainSpecificAddrHead = pDomainSpecificAddrHead->next;
+            pDomainSpecificAddrTemp->next = NULL;
+            if (NULL != pDomainSpecificAddrTemp)
+                free (pDomainSpecificAddrTemp);
+            pVoid = (DomainAddress*)pDomainSpecificAddrHead;
+            break;
+        }
+        case REDIRECTION_ADDRESS:
+        {
+            RedirectionAddress *pRedirectAddrHead = (RedirectionAddress*)pHead;
+            RedirectionAddress *pRedirectAddrTemp = (RedirectionAddress*)pHead;
+
+            pRedirectAddrHead = pRedirectAddrHead->next;
+            pRedirectAddrTemp->next = NULL;
+            if (NULL != pRedirectAddrTemp)
+                free (pRedirectAddrTemp);
+            pVoid = (RedirectionAddress*)pRedirectAddrHead;
+            break;
+        }
+        default:
+            break;
+    }
+    return pVoid;
+}
+
+
+void * initNode(char *pStr, NodeType eNodeType)
+{
+    void *pVoid = NULL;
+    if (NULL == pStr)
+    {
+        DHCPMGR_LOG_ERROR("%s:%d, NULL parameter passed\n", __FUNCTION__, __LINE__);
+        return NULL;
+    }
+    switch (eNodeType)
+    {
+        case DHCP_OPTION:
+        {
+            DhcpOptionsList *pDhcpOptionsList = (DhcpOptionsList *)malloc(sizeof(DhcpOptionsList));
+            if (NULL == pDhcpOptionsList)
+            {
+                DHCPMGR_LOG_ERROR("%s:%d, Failed to allocate the memory\n", __FUNCTION__, __LINE__);
+                pVoid = NULL;
+            }
+            else
+            {
+                memset(pDhcpOptionsList, 0, sizeof(DhcpOptionsList));
+                pDhcpOptionsList->next = NULL;
+                snprintf(pDhcpOptionsList->cDhcpOptions, sizeof(pDhcpOptionsList->cDhcpOptions), "%s", pStr);
+                DHCPMGR_LOG_INFO("DHCP_OPTION: %s\n", pDhcpOptionsList->cDhcpOptions);
+                pVoid = (DhcpOptionsList *)pDhcpOptionsList;
+            }
+            break;
+        }
+        case DHCP_VENDOR_CLASS:
+        {
+            DhcpVendorClassList *pDhcpVendorClass = (DhcpVendorClassList *)malloc(sizeof(DhcpVendorClassList));
+            if (NULL == pDhcpVendorClass)
+            {
+                DHCPMGR_LOG_ERROR("%s:%d, Failed to allocate the memory\n", __FUNCTION__, __LINE__);
+                pVoid = NULL;
+            }
+            else
+            {
+                memset(pDhcpVendorClass, 0, sizeof(DhcpVendorClassList));
+                pDhcpVendorClass->next = NULL;
+                snprintf(pDhcpVendorClass->cVendorClass, sizeof(pDhcpVendorClass->cVendorClass), "%s", pStr);
+                DHCPMGR_LOG_INFO("DHCP_VENDOR_CLASS: %s\n", pDhcpVendorClass->cVendorClass);
+                pVoid = (DhcpVendorClassList *)pDhcpVendorClass;
+            }
+            break;
+        }
+        case DOMAIN_SPECIFIC_ADDRESS:
+        {
+            DomainAddress *pDomainSpecificAddr = (DomainAddress *)malloc(sizeof(DomainAddress));
+            if (NULL == pDomainSpecificAddr)
+            {
+                DHCPMGR_LOG_ERROR("%s:%d, Failed to allocate the memory\n", __FUNCTION__, __LINE__);
+                pVoid = NULL;
+            }
+            else
+            {
+                memset(pDomainSpecificAddr, 0, sizeof(DomainAddress));
+                pDomainSpecificAddr->next = NULL;
+                snprintf(pDomainSpecificAddr->cDomainSpecificAddr, sizeof(pDomainSpecificAddr->cDomainSpecificAddr), "%s", pStr);
+                DHCPMGR_LOG_INFO("DOMAIN_SPECIFIC_ADDRESS: %s\n", pDomainSpecificAddr->cDomainSpecificAddr);
+                pVoid = (DomainAddress *)pDomainSpecificAddr;
+            }
+            break;
+        }
+        case REDIRECTION_ADDRESS:
+        {
+            RedirectionAddress *pRedirectAddr = (RedirectionAddress *)malloc(sizeof(RedirectionAddress));
+            if (NULL == pRedirectAddr)
+            {
+                DHCPMGR_LOG_ERROR("%s:%d, Failed to allocate the memory\n", __FUNCTION__, __LINE__);
+                pVoid = NULL;
+            }
+            else
+            {
+                memset(pRedirectAddr, 0, sizeof(RedirectionAddress));
+                pRedirectAddr->next = NULL;
+                snprintf(pRedirectAddr->cRedirectionAddr, sizeof(pRedirectAddr->cRedirectionAddr), "%s", pStr);
+                DHCPMGR_LOG_INFO("REDIRECTION_ADDRESS: %s\n", pRedirectAddr->cRedirectionAddr);
+                pVoid = (RedirectionAddress *)pRedirectAddr;
+            }
+            break;
+        }
+        default:
+        {
+            DHCPMGR_LOG_ERROR("Invalid node type: %d\n", eNodeType);
+            pVoid = NULL;
+            break;
+        }
+    }
+    if (NULL == pVoid)
+        DHCPMGR_LOG_ERROR("%s:%d, Failed to allocate the memory\n", __FUNCTION__, __LINE__);
+    return pVoid;
+}
+
+int insertNode(void **pHead, void *pNode, NodeType eNodeType)
+{
+    int iRet = 0;
+    if (NULL == pNode)
+    {
+        DHCPMGR_LOG_ERROR("%s:%d, NULL parameter passed\n", __FUNCTION__, __LINE__);
+        return -1;
+    }
+    switch (eNodeType)
+    {
+        case DHCP_OPTION:
+        {
+            DhcpOptionsList *pDhcpOptionsListHead = (DhcpOptionsList *)*pHead;
+            if (NULL == pDhcpOptionsListHead)
+            {
+                pDhcpOptionsListHead = (DhcpOptionsList *)pNode;
+                *pHead = (void *)pDhcpOptionsListHead;
+                DHCPMGR_LOG_INFO("%s:%d, pDhcpOptionsListHead is NULL\n", __FUNCTION__, __LINE__);
+            }
+            else
+            {
+                DHCPMGR_LOG_INFO("%s:%d, Moving the pDhcpOptionsListHead pointer\n", __FUNCTION__, __LINE__);
+                DhcpOptionsList *pDhcpOptionsListTemp = pDhcpOptionsListHead;
+                while (NULL != pDhcpOptionsListTemp->next)
+                    pDhcpOptionsListTemp = pDhcpOptionsListTemp->next;
+                pDhcpOptionsListTemp->next = (DhcpOptionsList *)pNode;
+            }
+            break;
+        }
+        case DHCP_VENDOR_CLASS:
+        {
+            DhcpVendorClassList *pDhcpVendorClassHead = (DhcpVendorClassList *)*pHead;
+            if (NULL == pDhcpVendorClassHead)
+            {
+                pDhcpVendorClassHead = (DhcpVendorClassList *)pNode;
+                *pHead = (void *)pDhcpVendorClassHead;
+                DHCPMGR_LOG_INFO("%s:%d, pDhcpVendorClassHead is NULL\n", __FUNCTION__, __LINE__);
+            }
+            else
+            {
+                DHCPMGR_LOG_INFO("%s:%d, Moving the pDhcpVendorClassHead pointer\n", __FUNCTION__, __LINE__);
+                DhcpVendorClassList *pDhcpVendorClassTemp = pDhcpVendorClassHead;
+                while (NULL != pDhcpVendorClassTemp->next)
+                    pDhcpVendorClassTemp = pDhcpVendorClassTemp->next;
+                pDhcpVendorClassTemp->next = (DhcpVendorClassList *)pNode;
+            }
+            break;
+        }
+        case DOMAIN_SPECIFIC_ADDRESS:
+        {
+            DomainAddress *pDomainSpecificHead = (DomainAddress *)*pHead;
+            if (NULL == pDomainSpecificHead)
+            {
+                pDomainSpecificHead = (DomainAddress *)pNode;
+                *pHead = (void *)pDomainSpecificHead;
+                DHCPMGR_LOG_INFO("%s:%d, pDomainSpecificHead is NULL\n", __FUNCTION__, __LINE__);
+            }
+            else
+            {
+                DHCPMGR_LOG_INFO("%s:%d, Moving the pDomainSpecificHead pointer\n", __FUNCTION__, __LINE__);
+                DomainAddress *pDomainSpecificTemp = pDomainSpecificHead;
+                while (NULL != pDomainSpecificTemp->next)
+                    pDomainSpecificTemp = pDomainSpecificTemp->next;
+                pDomainSpecificTemp->next = (DomainAddress *)pNode;
+            }
+            break;
+        }
+        case REDIRECTION_ADDRESS:
+        {
+            RedirectionAddress *pRedirectAddrHead = (RedirectionAddress *)*pHead;
+            if (NULL == pRedirectAddrHead)
+            {
+                pRedirectAddrHead = (RedirectionAddress *)pNode;
+                *pHead = (void *)pRedirectAddrHead;
+                DHCPMGR_LOG_INFO("%s:%d, pRedirectAddrHead is NULL\n", __FUNCTION__, __LINE__);
+            }
+            else
+            {
+                RedirectionAddress *pRedirectAddrTemp = pRedirectAddrHead;
+                while (NULL != pRedirectAddrTemp->next)
+                    pRedirectAddrTemp = pRedirectAddrTemp->next;
+                pRedirectAddrTemp->next = (RedirectionAddress *)pNode;
+                DHCPMGR_LOG_INFO("%s:%d, Moving the pRedirectAddrHead pointer\n", __FUNCTION__, __LINE__);
+            }
+            break;
+        }
+        case DHCP_INTERFACE_CONFIG:
+        {
+            DhcpIfaces *pDhcpIfacesHead = (DhcpIfaces *)*pHead;
+            if (NULL == pDhcpIfacesHead)
+            {
+                pDhcpIfacesHead = (DhcpIfaces *)pNode;
+                *pHead = (void *)pDhcpIfacesHead;
+                DHCPMGR_LOG_INFO("%s:%d, pDhcpIfacesHead is NULL\n", __FUNCTION__, __LINE__);
+            }
+            else
+            {
+                DHCPMGR_LOG_INFO("%s:%d, Moving the pDhcpIfacesHead pointer\n", __FUNCTION__, __LINE__);
+                DhcpIfaces *pDhcpIfacesTemp = pDhcpIfacesHead;
+                while (NULL != pDhcpIfacesTemp->next)
+                    pDhcpIfacesTemp = pDhcpIfacesTemp->next;
+                pDhcpIfacesTemp->next = (DhcpIfaces *)pNode;
+            }
+            break;
+        }
+        default:
+        {
+            DHCPMGR_LOG_ERROR("%s:%d, Invalid node type: %d\n", __FUNCTION__, __LINE__, eNodeType);
+            iRet = -1;
+        }
+    }
+    return iRet;
+}
+void doExtraPools (DhcpOptionsList ** pDhcpOptionsList, int * pDhcpOptionCount, bool bIsDhcpNsEnabled, char *pWanDhcpDns)
+{
+    char cDhcpEnabled    [BUFF_LEN_8]  = {0};
+    char cSyseventCmd    [BUFF_LEN_32] = {0};
+    char cIpv4Inst       [BUFF_LEN_8]  = {0};
+    char cIpv4InstStatus [BUFF_LEN_8]  = {0};
+    char cPools          [BUFF_LEN_8]  = {0};
+//    char cDhcpStartAddr  [BUFF_LEN_16] = {0};
+//    char cDhcpEndAddr    [BUFF_LEN_16] = {0};
+//    char cLanSubnet      [BUFF_LEN_16] = {0};
+//    char cDhcpLeaseTime  [BUFF_LEN_8]  = {0};
+    char cIfName         [BUFF_LEN_8]  = {0};
+
+    char *pToken = NULL;
+    int  iPool;
+    int  iIpv4Inst;
+
+    ifl_get_event("dhcp_server_current_pools", cPools, sizeof(cPools));
+    pToken = strtok(cPools, "\n");
+    while (pToken != NULL)
+    {
+        if (0 != pToken[0])
+        {
+            iPool = atoi(pToken);
+            snprintf(cSyseventCmd, sizeof(cSyseventCmd), "dhcp_server_%d_enabled", iPool);
+            ifl_get_event(cSyseventCmd, cDhcpEnabled, sizeof(cDhcpEnabled));
+
+            if (!strncmp(cDhcpEnabled, "TRUE", 4))
+            {
+                snprintf(cSyseventCmd, sizeof(cSyseventCmd), "dhcp_server_%d_ipv4inst", iPool);
+                ifl_get_event(cSyseventCmd, cIpv4Inst, sizeof(cIpv4Inst));
+                iIpv4Inst = atoi(cIpv4Inst);
+
+                snprintf(cSyseventCmd, sizeof(cSyseventCmd), "ipv4_%d-status", iIpv4Inst);
+                ifl_get_event(cSyseventCmd, cIpv4InstStatus, sizeof(cIpv4InstStatus));
+
+                if (!strncmp(cIpv4InstStatus, "up", 2))
+                {
+                    snprintf(cSyseventCmd, sizeof(cSyseventCmd), "ipv4_%d-ifname", iIpv4Inst);
+                    ifl_get_event(cSyseventCmd, cIfName, sizeof(cIfName));
+
+                        if ((true == bIsDhcpNsEnabled) && (NULL != pWanDhcpDns) && (0 < strlen(pWanDhcpDns)))
+                        {
+                            char cStrVar[BUFF_LEN_64] = {0};
+                            snprintf(cStrVar, sizeof(cStrVar), "%s,6,%s", cIfName, pWanDhcpDns);
+                            DhcpOptionsList* pXhsDhcpOptions = (DhcpOptionsList*)initNode(cStrVar, DHCP_OPTION);
+                            if (NULL != pXhsDhcpOptions)
+                            {
+                                DHCPMGR_LOG_INFO("Xhs Dhcp-option: %s", cStrVar);
+                                if (!insertNode((void*)pDhcpOptionsList, (void*)pXhsDhcpOptions, DHCP_OPTION))
+                                {
+                                    *pDhcpOptionCount += 1;
+                                    DHCPMGR_LOG_INFO("%s:%d, DhcpOptionCount: %d", __FUNCTION__, __LINE__, *pDhcpOptionCount);
+                                }
+                            }
+                            else
+                            {
+                                DHCPMGR_LOG_ERROR("%s:%d, Failed to init Node", __FUNCTION__, __LINE__);
+                            }
+                        }
+                }
+                else
+                {
+                    DHCPMGR_LOG_INFO("%s is not up, go to next pool", cIpv4InstStatus);
+                }
+            }
+            else
+            {
+                DHCPMGR_LOG_INFO("%s is not TRUE, continue to next pool", cDhcpEnabled);
+            }
+        }
+        else
+        {
+            DHCPMGR_LOG_INFO("Pool is empty, continue to next pool");
+        }
+        pToken = strtok(NULL, " ");
+    }
+}
+
+void freeMemoryDHCP(DhcpInterfaceConfig **ppDhcpCfgs, int iDhcpIfCount, GlobalDhcpConfig *pGlbDhcpCfg)
+{
+    if (NULL != ppDhcpCfgs)
+    {
+        for (int iCount = 0; iCount < iDhcpIfCount; iCount++)
+        {
+            if (NULL != ppDhcpCfgs[iCount])
+            {
+                free(ppDhcpCfgs[iCount]);
+                ppDhcpCfgs[iCount] = NULL;
+            }
+        }
+        free(ppDhcpCfgs);
+        ppDhcpCfgs = NULL;
+    }
+    if (NULL != pGlbDhcpCfg)
+    {
+        if (NULL != pGlbDhcpCfg->sDhcpOptions.ppVendorId)
+        {
+            for (int iCount = 0; iCount < pGlbDhcpCfg->sDhcpOptions.iVendorIdCount; iCount++)
+            {
+                if (NULL != pGlbDhcpCfg->sDhcpOptions.ppVendorId[iCount])
+                {
+                    free(pGlbDhcpCfg->sDhcpOptions.ppVendorId[iCount]);
+                    pGlbDhcpCfg->sDhcpOptions.ppVendorId[iCount] = NULL;
+                }
+            }
+            free(pGlbDhcpCfg->sDhcpOptions.ppVendorId);
+            pGlbDhcpCfg->sDhcpOptions.ppVendorId = NULL;
+        }
+        if (NULL != pGlbDhcpCfg->sDhcpOptions.ppVendorClass)
+        {
+            for (int iCount = 0; iCount < pGlbDhcpCfg->sDhcpOptions.iVendorClassCount; iCount++)
+            {
+                if (NULL != pGlbDhcpCfg->sDhcpOptions.ppVendorClass[iCount])
+                {
+                    free(pGlbDhcpCfg->sDhcpOptions.ppVendorClass[iCount]);
+                    pGlbDhcpCfg->sDhcpOptions.ppVendorClass[iCount] = NULL;
+                }
+            }
+            free(pGlbDhcpCfg->sDhcpOptions.ppVendorClass);
+            pGlbDhcpCfg->sDhcpOptions.ppVendorClass = NULL;
+        }
+        if (NULL != pGlbDhcpCfg->sRedirectInfo.ppRedirectionUrl)
+        {
+            for (int iCount = 0; iCount < pGlbDhcpCfg->sRedirectInfo.iRedirectionUrlCount; iCount++)
+            {
+                if (NULL != pGlbDhcpCfg->sRedirectInfo.ppRedirectionUrl[iCount])
+                {
+                    free(pGlbDhcpCfg->sRedirectInfo.ppRedirectionUrl[iCount]);
+                    pGlbDhcpCfg->sRedirectInfo.ppRedirectionUrl[iCount] = NULL;
+                }
+            }
+            free(pGlbDhcpCfg->sRedirectInfo.ppRedirectionUrl);
+            pGlbDhcpCfg->sRedirectInfo.ppRedirectionUrl = NULL;
+        }
+        if (NULL != pGlbDhcpCfg->sDomainSpecific.ppDomainSpecificAddresses)
+        {
+            for (int iCount = 0; iCount < pGlbDhcpCfg->sDomainSpecific.iDomainSpecificAddressCount; iCount++)
+            {
+                if (NULL != pGlbDhcpCfg->sDomainSpecific.ppDomainSpecificAddresses[iCount])
+                {
+                    free(pGlbDhcpCfg->sDomainSpecific.ppDomainSpecificAddresses[iCount]);
+                    pGlbDhcpCfg->sDomainSpecific.ppDomainSpecificAddresses[iCount] = NULL;
+                }
+            }
+            free(pGlbDhcpCfg->sDomainSpecific.ppDomainSpecificAddresses);
+            pGlbDhcpCfg->sDomainSpecific.ppDomainSpecificAddresses = NULL;
+        }
+        if (NULL != pGlbDhcpCfg->sCmdArgs.ppCmdLineArgs)
+        {
+            for (int iCount = 0; iCount < pGlbDhcpCfg->sCmdArgs.iNumOfArgs; iCount++)
+            {
+                if (NULL != pGlbDhcpCfg->sCmdArgs.ppCmdLineArgs[iCount])
+                {
+                    free(pGlbDhcpCfg->sCmdArgs.ppCmdLineArgs[iCount]);
+                    pGlbDhcpCfg->sCmdArgs.ppCmdLineArgs[iCount] = NULL;
+                }
+            }
+            free(pGlbDhcpCfg->sCmdArgs.ppCmdLineArgs);
+            pGlbDhcpCfg->sCmdArgs.ppCmdLineArgs = NULL;
+        }
+    }
+}
+
+void Add_inf_to_dhcp_config(LanConfig *pLanConfig, int numOfLanConfigs, DhcpInterfaceConfig **ppHeadDhcpIf,int pDhcpIfacesCount)
+{
+    if (pLanConfig == NULL || ppHeadDhcpIf == NULL || numOfLanConfigs <= 0)
+    {
+        DHCPMGR_LOG_ERROR("%s:%d, Invalid parameters passed\n", __FUNCTION__, __LINE__);
+        return;
+    }
+
+    for (int i = 0; i < pDhcpIfacesCount; i++)
+    {
+/*        DhcpIfaces *pIface = (DhcpIfaces *)malloc(sizeof(DhcpIfaces));
+        if (pIface == NULL)
+        {
+            DHCPMGR_LOG_ERROR("%s:%d, Memory allocation failed\n", __FUNCTION__, __LINE__);
+            continue;
+        }
+
+        memset(pIface, 0, sizeof(DhcpIfaces));
+*/
+        ppHeadDhcpIf[i]->bIsDhcpEnabled = pLanConfig[i].dhcpConfig.Dhcpv4_Enable;
+        snprintf(ppHeadDhcpIf[i]->cGatewayName, sizeof(ppHeadDhcpIf[i]->cGatewayName), "%s", pLanConfig[i].bridgeInfo.bridgeName);
+
+        if (pLanConfig[i].ipConfig.Ip_Enable && pLanConfig[i].dhcpConfig.Dhcpv4_Enable)
+        {
+            snprintf(ppHeadDhcpIf[i]->sAddressPool.cStartAddress, sizeof(ppHeadDhcpIf[i]->sAddressPool.cStartAddress), "%s", pLanConfig[i].dhcpConfig.Dhcpv4_Start_Addr);
+            snprintf(ppHeadDhcpIf[i]->sAddressPool.cEndAddress, sizeof(ppHeadDhcpIf[i]->sAddressPool.cEndAddress), "%s", pLanConfig[i].dhcpConfig.Dhcpv4_End_Addr);
+            snprintf(ppHeadDhcpIf[i]->cSubnetMask, sizeof(ppHeadDhcpIf[i]->cSubnetMask), "%s", pLanConfig[i].ipConfig.IpSubNet);
+            snprintf(ppHeadDhcpIf[i]->cLeaseDuration, sizeof(ppHeadDhcpIf[i]->cLeaseDuration), "%d", pLanConfig[i].dhcpConfig.Dhcpv4_Lease_Time);
+        }
+
+/*       if (!insertNode((void *)ppHeadDhcpIf, pIface, DHCP_INTERFACE_CONFIG))
+        {
+            DHCPMGR_LOG_ERROR("%s:%d, Failed to insert node for interface %s\n", __FUNCTION__, __LINE__, pLanConfig[i].bridgeInfo.bridgeName);
+            free(pIface);
+        }
+        else
+        {
+            (*pDhcpIfacesCount)++;
+            DHCPMGR_LOG_INFO("%s:%d, Added interface %s to DHCP configuration, count: %d\n",
+                    __FUNCTION__, __LINE__, pLanConfig[i].bridgeInfo.bridgeName, *pDhcpIfacesCount);
+        }*/
+    }
+}
+
+int Construct_dhcp_configuration(DhcpInterfaceConfig ** ppHeadDhcpIf, int pDhcpIfacesCount, char * Input, GlobalDhcpConfig *pGlbDhcpCfg, LanConfig *pLanConfig)
+{
+    DomainAddress       *pDomainAddress   = NULL;
+    RedirectionAddress  *pRedirectAddress = NULL;
+    DhcpOptionsList     *pDhcpOptionsList = NULL;
+    DhcpVendorClassList *pDhcpVendorClass = NULL;
+
+    DhcpOptionsList     * pHeadDhcpOptionsList = NULL;
+    DhcpVendorClassList * pHeadDhcpVendorClass = NULL;
+    DomainAddress       * pHeadDomainAddress   = NULL;
+    RedirectionAddress  * pHeadRedirectionAddr = NULL;
+
+    int  iDhcpOptionVendorCount = 0;
+    int  iDhcpVendorClassCount  = 0;
+    int  iDomainAddrCount       = 0;
+    int  iRedirectionAddrCount  = 0;
+//    int  iDhcpIfacesCount       = 0;
+#ifdef RDKB_EXTENDER_ENABLED
+    char cDevMode [BUFF_LEN_32]  = {0};
+    char cBuf     [BUFF_LEN_512] = {0};
+#endif /*RDKB_EXTENDER_ENABLED*/
+    char cDnsOnlyPrefix     [BUFF_LEN_8]   = {0};
+    char cSecWebUiEnabled   [BUFF_LEN_8]   = {0};
+    char cWanCheck          [BUFF_LEN_16]  = {0};
+    char cStatDnsEnabled    [BUFF_LEN_32]  = {0};
+    char cDhcpNs1           [BUFF_LEN_128] = {0};
+    char cDhcpNs2           [BUFF_LEN_128] = {0};
+    char cLanIpAddress      [BUFF_LEN_16]  = {0};
+    char cLanNetMask        [BUFF_LEN_16]  = {0};
+    char cLanIfName         [BUFF_LEN_16]  = {0};
+    char cCaptivePortalEn   [BUFF_LEN_8]   = {0};
+    char cRedirectionFlag   [BUFF_LEN_8]   = {0};
+    char cNetworkResult     [BUFF_LEN_8]   = {0};
+    char cWifiNotConfigured [BUFF_LEN_8]   = {0};
+    char cDhcpNsEnabled     [BUFF_LEN_32]  = {0};
+    char cWanDhcpDns        [BUFF_LEN_256] = {0};
+    char cPropagateWanDomain[BUFF_LEN_8]   = {0};
+    char cLanDomain         [BUFF_LEN_32]  = {0};
+    char cLanStatus         [BUFF_LEN_16]  = {0};
+    char cIotEnabled        [BUFF_LEN_16]  = {0};
+    char cIotIfName         [BUFF_LEN_16]  = {0};
+//    char cIotStartAddr      [BUFF_LEN_16]  = {0};
+//    char cIotEndAddr        [BUFF_LEN_16]  = {0};
+//    char cIotNetMask        [BUFF_LEN_16]  = {0};
+//    char cDhcpServerEnable  [BUFF_LEN_16]  = {0};
+    char l_cLog_Level         [BUFF_LEN_8] = {0};
+
+  //  bool bRfCaptive         = false;
+    bool bCaptivePortalMode = false;
+  //  bool bCaptiveCheck      = false;
+    bool bIsDhcpNsEnabled   = false;
+    bool bIsValidWanDhcpNs  = false;
+    BOOL l_bCaptive_Check = FALSE;
+    BOOL l_bRfCp = FALSE;
+    BOOL l_bMig_Case = TRUE;
+    BOOL l_bWifi_Res_Mig = FALSE;
+//    BOOL l_bDhcpNs_Enabled = FALSE;
+//    BOOL l_bIsValidWanDHCPNs = FALSE;
+
+    char *pPsmGet          = NULL;
+    int  iRetVal            = -1;
+    int  iRetryCount        = 0;
+    int  iMkDirRes          = -1;
+    int l_iRet_Val;
+    FILE *fpNetResult       = NULL;
+    FILE *fpDefaultResolv   = NULL;
+    FILE *l_fLocal_Dhcp_ConfFile = NULL;
+#if defined (_XB6_PRODUCT_REQ_)
+    char cRfCaptiveFeatureEnabled   [BUFF_LEN_8] = {0};
+    char cRfCaptivePortEnabled      [BUFF_LEN_8] = {0};
+#endif
+
+    if ((NULL == Input) && ((NULL == ppHeadDhcpIf) || (NULL == pGlbDhcpCfg)))
+    {
+        DHCPMGR_LOG_INFO("%s:%d, NULL parameter passed", __FUNCTION__, __LINE__);
+        return -1;
+    }
+    else if (NULL != Input)
+    {
+        if (0 > pDhcpIfacesCount)
+        {
+           DHCPMGR_LOG_INFO("%s:%d, No interface available ,exiting...!!", __FUNCTION__, __LINE__);
+           return -1;
+        }
+       /* if (NULL == pGlbDhcpCfg)
+        {
+            return -1;
+ //           pGlbDhcpCfg = &sGlbDhcpCfg; //this will give undefined behaviour
+        } */
+    }
+    Add_inf_to_dhcp_config(pLanConfig, pDhcpIfacesCount, ppHeadDhcpIf, pDhcpIfacesCount);
+
+// Lan interface and names were comes in LAN Config  // TODO LIST
+ /*   DhcpIfaces *pPrivateLan = (DhcpIfaces*) malloc (sizeof(DhcpIfaces));
+    if (NULL == pPrivateLan)
+    {
+        fprintf(g_fArmConsoleLog, "Failed to allocate the memory for DhcpIfaces structure\n");
+        return -1;
+    }
+
+    memset(pPrivateLan, 0, sizeof(DhcpIfaces));
+    pPrivateLan->sDhcpIfcfg.bIsDhcpEnabled = false;
+    pPrivateLan->next = NULL;
+    snprintf(pPrivateLan->sDhcpIfcfg.cLeaseDuration,sizeof(pPrivateLan->sDhcpIfcfg.cLeaseDuration),"%s",g_cDhcp_Lease_Time);
+
+    // DHCP Server Enabled
+    syscfg_get(NULL, "dhcp_server_enabled", cDhcpServerEnable, sizeof(cDhcpServerEnable));
+
+    if (!strncmp(cDhcpServerEnable, "1", 1))
+    {
+        pPrivateLan->sDhcpIfcfg.bIsDhcpEnabled = true;
+    }
+ */
+
+#ifdef RDKB_EXTENDER_ENABLED
+    syscfg_get(NULL, "Device_Mode", cDevMode, sizeof(cDevMode));
+    if (1 == atoi(cDevMode))
+    {
+        /*
+         * Modem/Extender mode:
+         * Start dnsmasq to assign IP address for to the tunnel interface
+         */
+
+        // set IP to interface to which dnsmasq should listen
+        char *pPsmStrVal = NULL;
+        char cMeshWanIfname[BUFF_LEN_16] = {0};
+
+        //Mesh wan Iface details
+        // Lan interface and names were comes in LAN Config  // TODO LIST
+        /*
+        DhcpIfaces *pMeshWanIf = malloc (sizeof(DhcpIfaces));
+        if (NULL == pMeshWanIf)
+        {
+            fprintf(g_fArmConsoleLog, "%s:%d Failed to allocate memory\n",__FUNCTION__, __LINE__);
+            return -1;
+        }
+       */
+        memset(cMeshWanIfname, 0, sizeof(cMeshWanIfname));
+
+        iRetVal = PSM_VALUE_GET_STRING(MESH_WAN_IFNAME, pPsmStrVal);
+
+        if (CCSP_SUCCESS == iRetVal && pPsmStrVal != NULL)
+        {
+            strncpy(cMeshWanIfname, pPsmStrVal, sizeof(cMeshWanIfname));
+            DHCPMGR_LOG_INFO("mesh_wan_ifname is %s", cMeshWanIfname);
+            Ansc_FreeMemory_Callback(pPsmStrVal);
+            pPsmStrVal = NULL;
+        }
+        v_secure_system("ip addr add "GRE_VLAN_IFACE_IP"/24 dev %s", cMeshWanIfname);
+
+        snprintf(pGlbDhcpCfg->cResolvCfgFile, sizeof(pGlbDhcpCfg->cResolvCfgFile),"%s", TMP_RESOLVE_CONF);
+        snprintf(pGlbDhcpCfg->cDhcpLeaseFile, sizeof(pGlbDhcpCfg->cDhcpLeaseFil),"%s", DHCP_LEASE_FILE);
+
+        // Lan interface and names were comes in LAN Config  // TODO LIST
+        /*
+        pMeshWanIf->sDhcpIfcfg.bIsDhcpEnabled = true;
+        snprintf(pMeshWanIf->sDhcpIfcfg.cGatewayName, sizeof(pMeshWanIf->sDhcpIfcfg.cGatewayName),"%s",cMeshWanIfname);
+        snprintf(pMeshWanIf->sDhcpIfcfg.cSubnetMask, sizeof(pMeshWanIf->sDhcpIfcfg.cSubnetMask),"%s",GRE_VLAN_IFACE_NETMASK);
+        snprintf(pMeshWanIf->sDhcpIfcfg.cLeaseDuration, sizeof(pMeshWanIf->sDhcpIfcfg.cLeaseDuration),"%s", GRE_VLAN_IFACE_DHCP_LEASE);
+
+        snprintf(pMeshWanIf->sDhcpIfcfg.sAddressPool.cStartAddress, sizeof(pMeshWanIf->sDhcpIfcfg.sAddressPool.cStartAddress),"%s",GRE_VLAN_IFACE_DHCP_START);
+        snprintf(pMeshWanIf->sDhcpIfcfg.sAddressPool.cEndAddress, sizeof(pMeshWanIf->sDhcpIfcfg.sAddressPool.cEndAddress),"%s",GRE_VLAN_IFACE_DHCP_END);
+        pMeshWanIf->sDhcpIfcfg.sAddressPool.iDhcpTagNum = 0;
+        pMeshWanIf->next = NULL;
+        insertNode (ppHeadDhcpIf, pMeshWanIf, DHCP_INTERFACE_CONFIG);
+        *pDhcpIfacesCount = *pDhcpIfacesCount +1;
+        configListUpdate(ppHeadDhcpIf, pDhcpIfacesCount);
+        */
+        pDhcpOptionsList = malloc (sizeof(DhcpOptionsList));
+        if (NULL == pDhcpOptionsList)
+        {
+            DHCPMGR_LOG_INFO("%s:%d, DHCP SERVER: Failed to allocate the memory", __FUNCTION__, __LINE__);
+            return -1;
+        }
+        pDhcpOptionsList->next = NULL;
+
+        // Add DHCP option 43: Vendor specific data
+        memset (cBuf, 0, sizeof(cBuf));
+        ifl_get_event("dhcpv4_option_43", cBuf, sizeof(cBuf));
+        if (('\0' != cBuf[0]) && (strlen(cBuf) > 0))
+        {
+            snprintf(pDhcpOptionsList->cDhcpOptions, sizeof(pDhcpOptionsList->cDhcpOptions), "%s", cBuf);
+            iDhcpOptionVendorCount++;
+            pHeadDhcpOptionsList = pDhcpOptionsList;
+        }
+        return 0;
+    }
+#endif
+    // prepare dhcp config file for GATEWAY mode
+
+    if ((NULL != Input) && (!strncmp(Input, "dns_only", 8)))
+    {
+        DHCPMGR_LOG_INFO("dns_only case prefix is #");
+        cDnsOnlyPrefix[0] = '#';
+    }
+
+    syscfg_get(NULL, "SecureWebUI_Enable", cSecWebUiEnabled, sizeof(cSecWebUiEnabled));
+    ifl_get_event("phylink_wan_state", cWanCheck, sizeof(cWanCheck));
+    if (!strncmp(cSecWebUiEnabled, "true", 4))
+    {
+        if(!strncmp(cWanCheck, "up", 2))
+        {
+            syscfg_set(NULL, "dhcpv6spool00::X_RDKCENTRAL_COM_DNSServersEnabled", "1");
+            syscfg_set(NULL, "dhcp_nameserver_enabled", "1");
+            syscfg_commit();
+        }
+        else
+        {
+            syscfg_get(NULL, "dhcp_nameserver_enabled", cStatDnsEnabled, sizeof(cStatDnsEnabled));
+            syscfg_get(NULL, "dhcp_nameserver_1", cDhcpNs1, sizeof(cDhcpNs1));
+            syscfg_get(NULL, "dhcp_nameserver_2", cDhcpNs2, sizeof(cDhcpNs2));
+            if(('\0' != cStatDnsEnabled[0]) && ( 1 == atoi(cStatDnsEnabled)))
+            {
+                if(('\0' == cDhcpNs1[0]) || (0 == strcmp(cDhcpNs1, "0.0.0.0")))
+                {
+                    if(('\0' == cDhcpNs2[0]) || (0 == strcmp(cDhcpNs2, "0.0.0.0")))
+                    {
+                        syscfg_set_commit(NULL, "dhcp_nameserver_enabled", "0");
+                    }
+                }
+            }
+        }
+    }
+    else
+    {
+        syscfg_get(NULL, "dhcp_nameserver_enabled", cStatDnsEnabled, sizeof(cStatDnsEnabled));
+        syscfg_get(NULL, "dhcp_nameserver_1", cDhcpNs1, sizeof(cDhcpNs1));
+        syscfg_get(NULL, "dhcp_nameserver_2", cDhcpNs2, sizeof(cDhcpNs2));
+        if(('\0' != cStatDnsEnabled[0]) && (1 == atoi(cStatDnsEnabled)))
+        {
+            if(('\0' == cDhcpNs1[0]) || (0 == strcmp(cDhcpNs1, "0.0.0.0")))
+            {
+                if(('\0' == cDhcpNs2[0]) || (0 == strcmp(cDhcpNs2, "0.0.0.0")))
+                {
+                    syscfg_set_commit(NULL, "dhcp_nameserver_enabled", "0");
+                }
+            }
+        }
+    }
+    syscfg_get(NULL, "lan_ipaddr", cLanIpAddress, sizeof(cLanIpAddress));
+    syscfg_get(NULL, "lan_netmask", cLanNetMask, sizeof(cLanNetMask));
+    syscfg_get(NULL, "lan_ifname", cLanIfName, sizeof(cLanIfName));
+    syscfg_get(NULL, "CaptivePortal_Enable", cCaptivePortalEn, sizeof(cCaptivePortalEn));
+    syscfg_get(NULL, "redirection_flag", cRedirectionFlag, sizeof(cRedirectionFlag));
+#if defined (_XB6_PRODUCT_REQ_)
+    syscfg_get(NULL, "enableRFCaptivePortal", cRfCaptiveFeatureEnabled, sizeof(cRfCaptiveFeatureEnabled));
+    syscfg_get(NULL, "rf_captive_portal", cRfCaptivePortEnabled, sizeof(cRfCaptivePortEnabled));
+#endif
+
+    if((0 == isValidLANIP(cLanIpAddress)) || (0 == isValidSubnetMask(cLanNetMask)))
+    {
+        FILE *fpCmd;
+        char cCmd        [BUFF_LEN_512] = {0};
+        char cResult     [BUFF_LEN_128] = {0};
+        char cLanIP      [BUFF_LEN_16]  = {0};
+        char cLanNetMask2[BUFF_LEN_16]  = {0};
+        char cDhcpStart  [BUFF_LEN_16]  = {0};
+        char cDhcpEnd    [BUFF_LEN_16]  = {0};
+
+        DHCPMGR_LOG_INFO("LAN IP Address OR LAN net mask is not in valid format, setting to default lan_ipaddr:%s lan_netmask:%s",cLanIpAddress,cLanNetMask);
+        snprintf(cCmd,sizeof(cCmd),"grep '$lan_ipaddr\\|$lan_netmask\\|$dhcp_start\\|$dhcp_end' %s"
+                " | awk '/\\$lan_ipaddr/ {split($1,ip, \"=\");}"
+                " /\\$lan_netmask/ {split($1,mask, \"=\");}"
+                " /\\$dhcp_start/ {split($1,start, \"=\");}"
+                " /\\$dhcp_end/ {split($1,end, \"=\");}"
+                " END {print ip[2], mask[2], start[2], end[2]}'",DEFAULT_FILE);
+
+        DHCPMGR_LOG_INFO("Command = %s",cCmd);
+
+        if ((fpCmd = popen(cCmd, "r")) == NULL)
+        {
+            DHCPMGR_LOG_ERROR("popen ERROR");
+        }
+        else if (fgets(cResult, sizeof(cResult), fpCmd) == NULL)
+        {
+            pclose(fpCmd);
+            DHCPMGR_LOG_ERROR("popen fgets ERROR");
+        }
+        else
+        {
+            sscanf(cResult, "%s %s %s %s",cLanIP, cLanNetMask2, cDhcpStart, cDhcpEnd);
+
+            syscfg_set(NULL, "lan_ipaddr", cLanIP);
+            syscfg_set(NULL, "lan_netmask", cLanNetMask2);
+            syscfg_set(NULL, "dhcp_start", cDhcpStart);
+            syscfg_set(NULL, "dhcp_end", cDhcpEnd);
+            syscfg_commit();
+
+            memset(cLanIpAddress, 0, sizeof(cLanIpAddress));
+            strncpy(cLanIpAddress,cLanIP,sizeof(cLanIpAddress));
+
+            memset(cLanNetMask, 0, sizeof(cLanNetMask));
+            strncpy(cLanNetMask,cLanNetMask2,sizeof(cLanNetMask));
+
+            pclose(fpCmd);
+        }
+    }
+
+
+    // Static LAN DNS (brlan0)
+    syscfg_get(NULL, "dhcp_nameserver_enabled", cDhcpNsEnabled, sizeof(cDhcpNsEnabled));
+    if(('\0' != cDhcpNsEnabled[0]) && (1 == atoi(cDhcpNsEnabled)))
+    {
+        bIsDhcpNsEnabled = true;
+    }
+
+    // Get proper wan dns server list and check whether wan-dns is valid or not
+    check_and_get_wan_dhcp_dns(cWanDhcpDns);
+    if('\0' != cWanDhcpDns[0])
+    {
+        bIsValidWanDhcpNs = true;
+    }
+
+    fpNetResult = fopen(NETWORK_RES_FILE, "r");
+    if (NULL == fpNetResult)
+    {
+        DHCPMGR_LOG_INFO("%s file is not present ", NETWORK_RES_FILE);
+    }
+    else
+    {
+        /* CID 60600: Unchecked return value from library */
+        if ((fscanf(fpNetResult,"%s", cNetworkResult)) != 1)
+        {
+            DHCPMGR_LOG_INFO("read error of %s \n",NETWORK_RES_FILE);
+        }
+
+        fclose(fpNetResult);
+    }
+
+    iRetVal = PSM_VALUE_GET_STRING(PSM_NAME_NOTIFY_WIFI_CHANGES, pPsmGet);
+    while ((CCSP_SUCCESS != iRetVal && pPsmGet == NULL) && (iRetryCount++ < 2))
+    {
+        iRetVal = PSM_VALUE_GET_STRING(PSM_NAME_NOTIFY_WIFI_CHANGES, pPsmGet);
+    }
+    if (CCSP_SUCCESS == iRetVal && pPsmGet != NULL)
+    {
+        strncpy(cWifiNotConfigured, pPsmGet, sizeof(cWifiNotConfigured));
+        DHCPMGR_LOG_INFO("DHCP SERVER : NotifyWiFiChanges is %s\n", cWifiNotConfigured);
+        Ansc_FreeMemory_Callback(pPsmGet);
+        pPsmGet = NULL;
+    }
+    else
+    {
+        DHCPMGR_LOG_ERROR("DHCP SERVER : Error:%d while getting:%s or value is empty\n",
+                iRetVal, PSM_NAME_NOTIFY_WIFI_CHANGES);
+    }
+    DHCPMGR_LOG_INFO("DHCP SERVER : CaptivePortal_Enabled is %s\n", cCaptivePortalEn);
+
+    if (IS_MIG_CHECK_NEEDED(g_cMig_Check))
+    {
+        DHCPMGR_LOG_INFO("Wifi Migration checks are needed");
+
+        char l_cMigCase[8] = {0};
+        syscfg_get(NULL, "migration_cp_handler", l_cMigCase, sizeof(l_cMigCase));
+        if(!strncmp(l_cMigCase, "true", 4))
+        {
+            DHCPMGR_LOG_INFO("DHCP SERVER : Initialize migration case variable to true");
+            l_bMig_Case = TRUE;
+        }
+        else
+        {
+            DHCPMGR_LOG_INFO("DHCP SERVER : Initialize migration case variable to false");
+            l_bMig_Case = FALSE;
+        }
+        char l_cWan_Service_Stat[16] = {0};
+        ifl_get_event("wan_service-status", l_cWan_Service_Stat, sizeof(l_cWan_Service_Stat));
+
+        int l_iRetry_Count = 0;
+        l_iRet_Val = PSM_VALUE_GET_STRING(PSM_NAME_WIFI_RES_MIG, pPsmGet);
+        while ((CCSP_SUCCESS != l_iRet_Val && pPsmGet == NULL) &&
+               (l_iRetry_Count++ < 2))
+        {
+            l_iRet_Val = PSM_VALUE_GET_STRING(PSM_NAME_WIFI_RES_MIG, pPsmGet);
+        }
+        if (CCSP_SUCCESS == l_iRet_Val && pPsmGet != NULL)
+        {
+            /* BUFFER_SIZE_WARNING */
+            if(!strncmp(pPsmGet, "true", 4))
+            {
+                l_bWifi_Res_Mig = TRUE;
+            }
+            else
+            {
+                l_bWifi_Res_Mig = FALSE;
+            }
+            DHCPMGR_LOG_INFO("DHCP SERVER : WiFiRestored_AfterMigration is %d", l_bWifi_Res_Mig);
+            Ansc_FreeMemory_Callback(pPsmGet);
+            pPsmGet = NULL;
+        }
+        else
+        {
+            DHCPMGR_LOG_ERROR("DHCP SERVER : Error:%d while getting:%s or value is empty",
+                              l_iRet_Val, PSM_NAME_WIFI_RES_MIG);
+        }
+
+        if (l_bMig_Case && l_bWifi_Res_Mig)
+        {
+            DHCPMGR_LOG_INFO("DHCP SERVER : WiFi restored case setting MIGRATION_CASE variable to false");
+            l_bMig_Case = FALSE;
+        }
+    }
+    else
+    {
+        DHCPMGR_LOG_INFO("Migration checks are not needed");
+    }
+
+    if (IS_MIG_CHECK_NEEDED(g_cMig_Check))
+    {
+        l_bCaptive_Check = ((!strncmp(cCaptivePortalEn, "true", 4)) && (FALSE == l_bMig_Case)) ? (TRUE) : (FALSE);
+    }
+    else
+    {
+        l_bCaptive_Check = (!strncmp(cCaptivePortalEn, "true", 4)) ? (TRUE) : (FALSE);
+    }
+
+    if (l_bCaptive_Check)
+    {
+#if defined (_XB6_PRODUCT_REQ_)
+        if ((!strncmp(cRfCaptiveFeatureEnabled,"true",4)) && (!strncmp(cRfCaptivePortEnabled,"true",4)))
+        {
+            l_bRfCp = TRUE;
+        }
+        if  ( (TRUE== l_bRfCp ) || ((!strncmp(cNetworkResult, "204", 3)) && (!strncmp(cRedirectionFlag, "true", 4)) &&
+              (!strncmp(cWifiNotConfigured, "true", 4))))
+        {
+            bCaptivePortalMode = TRUE;
+            if (TRUE== l_bRfCp )
+            {
+                DHCPMGR_LOG_INFO("DHCP SERVER : NO RF CAPTIVE_PORTAL_MODE");
+            }
+            else
+            {
+                DHCPMGR_LOG_INFO("DHCP SERVER : WiFi SSID and Passphrase are not modified,set CAPTIVE_PORTAL_MODE");
+                t2_event_d("SYS_INFO_CaptivePortal", 1);
+                if (access("/nvram/reverted", F_OK) == 0) //If file is present
+                {
+                    DHCPMGR_LOG_INFO("DHCP SERVER : Removing reverted flag");
+                    remove_file("/nvram/reverted");
+                }
+            }
+        }
+        else
+        {
+            bCaptivePortalMode = FALSE;
+            DHCPMGR_LOG_INFO("DHCP SERVER : WiFi SSID and Passphrase are already modified");
+            DHCPMGR_LOG_INFO(" or no network response ,set CAPTIVE_PORTAL_MODE to false");
+        }
+#else
+        if  ((!strncmp(cNetworkResult, "204", 3)) && (!strncmp(cRedirectionFlag, "true", 4)) &&
+              (!strncmp(cWifiNotConfigured, "true", 4)))
+        {
+            bCaptivePortalMode = TRUE;
+            DHCPMGR_LOG_INFO("DHCP SERVER : WiFi SSID and Passphrase are not modified,set CAPTIVE_PORTAL_MODE");
+            t2_event_d("SYS_INFO_CaptivePortal", 1);
+            if (access("/nvram/reverted", F_OK) == 0) //If file is present
+            {
+                DHCPMGR_LOG_INFO("DHCP SERVER : Removing reverted flag");
+                remove_file("/nvram/reverted");
+            }
+        }
+        else
+        {
+            bCaptivePortalMode = FALSE;
+            DHCPMGR_LOG_INFO("DHCP SERVER : WiFi SSID and Passphrase are already modified");
+            DHCPMGR_LOG_INFO(" or no network response ,set CAPTIVE_PORTAL_MODE to false");
+        }
+#endif
+    }
+
+    // Dont add resolv-file if in norf captive portal mode
+    if(FALSE == l_bRfCp)
+    {
+        /*       fprintf(l_fLocal_Dhcp_ConfFile, "domain-needed\n");
+        fprintf(l_fLocal_Dhcp_ConfFile, "bogus-priv\n");
+        fprintf(l_fLocal_Dhcp_ConfFile, "address=/.c.f.ip6.arpa/\n"); */
+
+        char cStrVar   [BUFF_LEN_64] = {0};
+        pGlbDhcpCfg->bDomainNeeded = true;
+        pGlbDhcpCfg->bBogusPriv    = true;
+
+        snprintf(cStrVar, sizeof(cStrVar),"/.c.f.ip6.arpa/"),
+        pDomainAddress =(DomainAddress*)initNode(cStrVar, DOMAIN_SPECIFIC_ADDRESS);
+        if (NULL != pDomainAddress)
+        {
+            DHCPMGR_LOG_INFO("%s:%d: DomainAddress:%s\n", __FUNCTION__, __LINE__, pDomainAddress->cDomainSpecificAddr);
+            if (!insertNode((void*)&pHeadDomainAddress, (void*)pDomainAddress, DOMAIN_SPECIFIC_ADDRESS))
+            {
+                iDomainAddrCount++;
+                DHCPMGR_LOG_INFO("%s:%d, iDomainAddrCount:%d\n", __FUNCTION__, __LINE__, iDomainAddrCount);
+            }
+        }
+        else
+        {
+            DHCPMGR_LOG_ERROR("DHCP SERVER : DomainAddress creation failed\n");
+        }
+
+        if (true == bCaptivePortalMode)
+        {
+            // Create a temporary resolv configuration file
+            // Pass that as an option in DNSMASQ
+            iMkDirRes = mkdir(DEFAULT_CONF_DIR, S_IRUSR | S_IWUSR);
+            //mkdir successful or already exists
+            if (0 == iMkDirRes || (0 != iMkDirRes && EEXIST == errno))
+            {
+                fpDefaultResolv = fopen(DEFAULT_RESOLV_CONF, "a+");
+                if (NULL != fpDefaultResolv)
+                {
+                    fprintf(fpDefaultResolv, "nameserver 127.0.0.1\n");
+                    snprintf(pGlbDhcpCfg->cResolvCfgFile, sizeof(pGlbDhcpCfg->cResolvCfgFile),"%s",DEFAULT_RESOLV_CONF);
+                    fclose(fpDefaultResolv);
+                }
+                else
+                {
+                    DHCPMGR_LOG_ERROR("%s file creation failed\n", DEFAULT_RESOLV_CONF);
+                }
+            }
+        }
+        else
+        {
+            if ((access(DEFAULT_RESOLV_CONF, F_OK) == 0)) //DEFAULT_RESOLV_CONF file exists
+            {
+                remove_file(DEFAULT_RESOLV_CONF);
+            }
+
+            if(false == bIsDhcpNsEnabled )
+            {
+                snprintf(pGlbDhcpCfg->cResolvCfgFile, sizeof(pGlbDhcpCfg->cResolvCfgFile),"%s",RESOLV_CONF);
+            }
+        }
+
+        //Propagate Domain
+        syscfg_get(NULL, "dhcp_server_propagate_wan_domain", cPropagateWanDomain, sizeof(cPropagateWanDomain));
+
+        // if we are provisioned to use the wan domain name, the we do so
+        // otherwise we use the lan domain name
+        if (!strncmp(cPropagateWanDomain, "1", 1))
+        {
+            ifl_get_event("dhcp_domain", cLanDomain, sizeof(cLanDomain));
+        }
+        if (0 == cLanDomain[0])
+        {
+            syscfg_get(NULL, "lan_domain", cLanDomain, sizeof(cLanDomain));
+        }
+        if (0 != cLanDomain[0])
+        {
+            snprintf(pGlbDhcpCfg->cDomain, sizeof(pGlbDhcpCfg->cDomain), "%s", cLanDomain);
+        }
+    }
+    /*    else
+    {
+            fprintf(l_fLocal_Dhcp_ConfFile, "no-resolv\n");
+    }
+    */
+    pGlbDhcpCfg->bExpandHosts = true;
+
+    //Log Level is not used but still retaining the code
+    syscfg_get(NULL, "log_level", l_cLog_Level, sizeof(l_cLog_Level));
+
+    if ((NULL != Input) && (!strncmp(Input, "dns_only", 8)))
+    {
+#if 0 //TBD
+        fprintf(l_fLocal_Dhcp_ConfFile, "no-dhcp-interface=%s\n", cLanIfName);
+#endif
+    }
+    else
+    {
+        snprintf(pGlbDhcpCfg->cDhcpLeaseFile, sizeof(pGlbDhcpCfg->cDhcpLeaseFile), "%s", DHCP_LEASE_FILE);
+        snprintf(pGlbDhcpCfg->cDhcpHostsFile, sizeof(pGlbDhcpCfg->cDhcpHostsFile), "%s", DHCP_STATIC_HOSTS_FILE);
+        if ((false == bCaptivePortalMode) && (false == bIsDhcpNsEnabled))
+        {
+            snprintf(pGlbDhcpCfg->cDhcpOptsFile, sizeof(pGlbDhcpCfg->cDhcpOptsFile), "%s", DHCP_OPTIONS_FILE);
+        }
+    }
+
+    int iDhcpOptonCount = sizeof(dhcpOptionsArray) / sizeof(dhcpOptionsArray[0]);
+    for (int iCount = 0; iCount < iDhcpOptonCount; iCount++)
+    {
+        pDhcpOptionsList = (DhcpOptionsList*)initNode(dhcpOptionsArray[iCount].cDhcpOptions, DHCP_OPTION);
+        if (NULL != pDhcpOptionsList)
+        {
+            DHCPMGR_LOG_INFO("%s:%d: dhcpOption:%s\n", __FUNCTION__, __LINE__, pDhcpOptionsList->cDhcpOptions);
+            if (!insertNode((void*)&pHeadDhcpOptionsList, (void*)pDhcpOptionsList, DHCP_OPTION))
+            {
+                iDhcpOptionVendorCount++;
+                DHCPMGR_LOG_INFO("%s:%d, iCount:%d, iDhcpOptionVendorCount:%d\n", __FUNCTION__, __LINE__, iCount, iDhcpOptionVendorCount);
+            }
+        }
+        else
+        {
+            DHCPMGR_LOG_ERROR("%s:%d, Failed to init Node\n", __FUNCTION__, __LINE__);
+        }
+    }
+
+    pDhcpVendorClass = (DhcpVendorClassList*)initNode("set:extender,WNXL11BWL", DHCP_VENDOR_CLASS);
+    if (NULL != pDhcpVendorClass)
+    {
+        DHCPMGR_LOG_INFO("%s:%d: dhcpVendorClass:%s\n", __FUNCTION__, __LINE__, pDhcpVendorClass->cVendorClass);
+        if (!insertNode((void*)&pHeadDhcpVendorClass, (void*)pDhcpVendorClass, DHCP_VENDOR_CLASS))
+        {
+            iDhcpVendorClassCount++;
+            DHCPMGR_LOG_INFO("%s:%d, iDhcpVendorClassCount:%d\n", __FUNCTION__, __LINE__, iDhcpVendorClassCount);
+        }
+    }
+    else
+    {
+        DHCPMGR_LOG_ERROR("%s:%d, Failed to init Node\n", __FUNCTION__, __LINE__);
+    }
+    char cTimeOffset[BUFF_LEN_32] = {0};
+    FILE *fp = popen("dmcli eRT retv Device.Time.TimeOffset", "r");
+    if (fp)
+    {
+        fgets(cTimeOffset, sizeof(cTimeOffset), fp);
+        pclose(fp);
+
+        if (strlen(cTimeOffset))
+        {
+            char cStrVar[BUFF_LEN_128] = {0};
+            snprintf(cStrVar, sizeof(cStrVar), "tag:extender, option:time-offset,%s", cTimeOffset);
+            pDhcpOptionsList = (DhcpOptionsList*)initNode(cStrVar, DHCP_OPTION);
+            if (NULL != pDhcpOptionsList)
+            {
+                DHCPMGR_LOG_INFO("%s:%d: dhcpOption:%s\n", __FUNCTION__, __LINE__, pDhcpOptionsList->cDhcpOptions);
+                if (!insertNode((void*)&pHeadDhcpOptionsList, (void*)pDhcpOptionsList, DHCP_OPTION))
+                {
+                    iDhcpOptionVendorCount++;
+                    DHCPMGR_LOG_INFO("%s:%d, iDhcpOptionVendorCount:%d\n", __FUNCTION__, __LINE__, iDhcpOptionVendorCount);
+                }
+            }
+            else
+            {
+                DHCPMGR_LOG_ERROR("%s:%d, Failed to init Node\n", __FUNCTION__, __LINE__);
+            }
+        }
+        else
+        {
+            DHCPMGR_LOG_ERROR("%s:%d, Failed to get TimeOffset\n", __FUNCTION__, __LINE__);
+        }
+    }
+    else
+    {
+        DHCPMGR_LOG_ERROR("%s:%d, Failed to get TimeOffset\n", __FUNCTION__, __LINE__);
+    }
+    /*        //Not taking into account prefix
+    fprintf(l_fLocal_Dhcp_ConfFile, "dhcp-leasefile=%s\n", DHCP_LEASE_FILE);
+    #if 0
+    //DHCP_NUM is the number of available dhcp address for the lan
+    syscfg_get(NULL, "dhcp_num", l_cDhcp_Num, sizeof(l_cDhcp_Num));
+    if (0 == l_cDhcp_Num[0])
+    {
+        DHCPMGR_LOG_INFO("DHCP NUM is empty, set the dhcp_num integer as zero");
+        l_idhcp_num = 0;
+    }
+    else
+    {
+        l_idhcp_num = atoi(l_cDhcp_Num);
+        DHCPMGR_LOG_INFO("DHCP NUM is not empty it is :%d", l_idhcp_num);
+    }
+    fprintf(l_fLocal_Dhcp_ConfFile, "%sdhcp-lease-max=%d\n", l_cDns_Only_Prefix, l_idhcp_num);
+    #endif
+    fprintf(l_fLocal_Dhcp_ConfFile, "dhcp-hostsfile=%s\n", DHCP_STATIC_HOSTS_FILE);
+
+    if ( ( FALSE == bCaptivePortalMode) &&\
+            ( FALSE == bIsDhcpNsEnabled )
+            )
+    {
+           fprintf(l_fLocal_Dhcp_ConfFile, "dhcp-optsfile=%s\n", DHCP_OPTIONS_FILE);
+    }
+
+//Ethernet Backhaul changes for plume pods
+#if defined (_XB6_PRODUCT_REQ_) || defined (_HUB4_PRODUCT_REQ_)
+    fprintf(l_fLocal_Dhcp_ConfFile, "dhcp-option=vendor:Plume,43,tag=123\n");
+    fprintf(l_fLocal_Dhcp_ConfFile, "dhcp-option=vendor:PP203X,43,tag=123\n");
+    fprintf(l_fLocal_Dhcp_ConfFile, "dhcp-option=vendor:HIXE12AWR,43,tag=123\n");
+    fprintf(l_fLocal_Dhcp_ConfFile, "dhcp-option=vendor:WNXE12AWR,43,tag=123\n");
+    fprintf(l_fLocal_Dhcp_ConfFile, "dhcp-option=vendor:SE401,43,tag=123\n");
+    fprintf(l_fLocal_Dhcp_ConfFile, "dhcp-option=vendor:WNXL11BWL,43,tag=123\n");
+#endif
+    */
+        if ((NULL == Input) ||
+               ((NULL != Input) && (strncmp(Input, "dns_only", 8)))) //not dns_only case
+        {
+            DHCPMGR_LOG_INFO("not dns_only case calling other prepare functions");
+            prepare_dhcp_conf_static_hosts();
+            prepare_dhcp_options_wan_dns();
+        }
+
+    #if defined (_XB6_PRODUCT_REQ_) || defined (_CBR_PRODUCT_REQ_)
+        {
+        struct in_addr ipv4Addr;
+        int    ret = -1;
+        int    resComp = -1;
+        char   nmSrv[32]    = {0};
+        char   dnsIP[64]    = {0};
+        char   leftOut[128] = {0};
+        char   ns_ip[256]   = {0};
+        FILE*  fp1 = NULL;
+        FILE*  fp2 = NULL;
+     
+        if ((fp1 = fopen(RESOLV_CONF, "r")))
+        {
+            while ( memset(nmSrv,   0, sizeof(nmSrv)),
+                memset(dnsIP,   0, sizeof(dnsIP)),
+                memset(leftOut, 0, sizeof(leftOut)),
+                fscanf(fp1, "%s %s%[^\n]s\n", nmSrv, dnsIP, leftOut) != EOF)
+            {
+            ret = strcmp_s(nmSrv, sizeof(nmSrv), "nameserver", &resComp);
+            ERR_CHK(ret);
+
+            if (!ret && !resComp)
+            {
+                if (inet_pton(AF_INET, dnsIP, &ipv4Addr) > 0)
+                {
+                ret = strcat_s(ns_ip, sizeof(ns_ip), ",");
+                ERR_CHK(ret);
+
+                ret = strcat_s(ns_ip, sizeof(ns_ip), dnsIP);
+                ERR_CHK(ret);
+                }
+            }
+            }
+            fclose(fp1);
+
+            if (*ns_ip && (fp2 = fopen(DHCP_OPTIONS_FILE, "w")))
+            {
+            fprintf(fp2, "option:dns-server%s\n", ns_ip);
+            fclose(fp2);
+            }
+            else
+            {
+            DHCPMGR_LOG_ERROR("DHCP_SERVER : Error in opening %s", DHCP_OPTIONS_FILE);
+            }
+        }
+        else
+        {
+            DHCPMGR_LOG_ERROR("DHCP_SERVER : Error in opening %s", RESOLV_CONF);
+        }
+        }
+    #endif
+
+        ifl_get_event("lan-status", cLanStatus, sizeof(cLanStatus));
+        DHCPMGR_LOG_INFO("%s:%d, DHCP_SERVER : LanStatus: %s", __FUNCTION__, __LINE__, cLanStatus);
+        if ((!strncmp(cLanStatus, "started", 7)) && ('#' != cDnsOnlyPrefix[0]))
+        {
+            // calculate_dhcp_range has code to write dhcp-range
+/*            snprintf(pPrivateLan->sDhcpIfcfg.cGatewayName, sizeof(pPrivateLan->sDhcpIfcfg.cGatewayName), "%s", cLanIfName);
+            calculateDhcpRange(pPrivateLan, cDnsOnlyPrefix);
+
+            if (!insertNode((void*)ppHeadDhcpIf, pPrivateLan, DHCP_INTERFACE_CONFIG))
+            {
+            pDhcpIfacesCount += 1;
+            DHCPMGR_LOG_INFO("Brlan0:pDhcpIfacesCount: %d", pDhcpIfacesCount);
+            }
+            */
+            DHCPMGR_LOG_INFO("%s:%d, DHCP_SERVER : bIsDhcpNsEnabled: %d", __FUNCTION__, __LINE__, bIsDhcpNsEnabled);
+            if (true == bIsDhcpNsEnabled)
+            {
+            char cDhcpNsOptionStr[BUFF_LEN_1024] = {0};
+            get_dhcp_option_for_brlan0(cDhcpNsOptionStr);
+            DHCPMGR_LOG_INFO("%s:%d, DHCP_SERVER : [%s] %s", __FUNCTION__, __LINE__, cLanIfName, cDhcpNsOptionStr);
+            if (('\0' != cDhcpNsOptionStr[0]) && (0 < strlen(cDhcpNsOptionStr)))
+            {
+                for (int i = 0; i < pDhcpIfacesCount; i++) 
+                {
+                    if (strcmp(ppHeadDhcpIf[i]->cGatewayName, cLanIfName) == 0) 
+                    {
+                        ppHeadDhcpIf[i]->sDhcpNameServer.bDhcpNameServerEnabled = true;
+                        snprintf(ppHeadDhcpIf[i]->sDhcpNameServer.cDhcpNameServerIp, sizeof(ppHeadDhcpIf[i]->sDhcpNameServer.cDhcpNameServerIp), "%s", cDhcpNsOptionStr);
+                        break;
+                    }
+                }
+            }
+
+            if (!strncmp(cSecWebUiEnabled, "true", 4))
+            {
+                char cLocFqdn[BUFF_LEN_16] = {0};
+                char cCurLanIp[BUFF_LEN_16] = {0};
+                char cStrVar[BUFF_LEN_64] = {0};
+
+                ifl_get_event("current_lan_ipaddr", cCurLanIp, sizeof(cCurLanIp));
+                syscfg_get(NULL, "SecureWebUI_LocalFqdn", cLocFqdn, sizeof(cLocFqdn));
+
+                snprintf(cStrVar, sizeof(cStrVar), "/%s/%s", cLocFqdn, cCurLanIp);
+                pDomainAddress = (DomainAddress*)initNode(cStrVar, DOMAIN_SPECIFIC_ADDRESS);
+                if (NULL != pDomainAddress)
+                {
+                if (!insertNode((void*)&pHeadDomainAddress, (void*)pDomainAddress, DOMAIN_SPECIFIC_ADDRESS))
+                {
+                    iDomainAddrCount++;
+                    DHCPMGR_LOG_INFO("%s:%d, iDomainAddrCount:%d", __FUNCTION__, __LINE__, iDomainAddrCount);
+                }
+                }
+                else
+                {
+                DHCPMGR_LOG_ERROR("%s:%d, Failed to init Node", __FUNCTION__, __LINE__);
+                }
+
+                pRedirectAddress = (RedirectionAddress*)initNode(cStrVar, REDIRECTION_ADDRESS);
+                if (NULL != pRedirectAddress)
+                {
+                if (!insertNode((void*)&pHeadRedirectionAddr, (void*)pRedirectAddress, REDIRECTION_ADDRESS))
+                {
+                    iRedirectionAddrCount++;
+                    DHCPMGR_LOG_INFO("%s:%d, iRedirectionAddrCount:%d", __FUNCTION__, __LINE__, iRedirectionAddrCount);
+                }
+                }
+                else
+                {
+                DHCPMGR_LOG_ERROR("%s:%d, Failed to init Node", __FUNCTION__, __LINE__);
+                }
+            }
+            DHCPMGR_LOG_INFO("DHCP_SERVER : [%s] %s", cLanIfName, cDhcpNsOptionStr);
+            }
+        }
+        /*        if (!strncmp(cLanStatus, "started", 7))
+            {
+                // calculate_dhcp_range has code to write dhcp-range
+                fprintf(l_fLocal_Dhcp_ConfFile, "interface=%s\n",cLanIfName);
+                calculate_dhcp_range(l_fLocal_Dhcp_ConfFile, cDnsOnlyPrefix);
+
+
+                // Add brlan0 custom dns server configuration
+                if( bIsDhcpNsEnabled )
+                {
+                    char cDhcpNs_OptionString[ 1024 ] = { 0 };
+                    get_dhcp_option_for_brlan0( cDhcpNs_OptionString );
+                    fprintf(l_fLocal_Dhcp_ConfFile, "%s\n", cDhcpNs_OptionString);
+                    if (!strncmp(cSecWebUiEnabled, "true", 4))
+                    {
+                        char  l_clocFqdn[16] = {0},l_cCurLanIP[16] = {0};
+                        ifl_get_event( "current_lan_ipaddr", l_cCurLanIP, sizeof(l_cCurLanIP));
+                        syscfg_get(NULL, "SecureWebUI_LocalFqdn", l_clocFqdn, sizeof(l_clocFqdn));
+                        fprintf(l_fLocal_Dhcp_ConfFile, "address=/%s/%s\n",l_clocFqdn,l_cCurLanIP );
+                        fprintf(l_fLocal_Dhcp_ConfFile, "server=/%s/%s\n",l_clocFqdn,l_cCurLanIP );
+                    }
+                    DHCPMGR_LOG_INFO("DHCP_SERVER : [%s] %s", cLanIfName, cDhcpNs_OptionString );
+                 }
+             }
+        */
+            // For boot time optimization, run do_extra_pools only when brlan1 interface is available
+            // Ideally interface presence is done by passing SIOCGIFCONF and going thru the complete
+            // Interface list but using SIOCGIFADDR	as it is only call to get IP Address of the interface
+            // If the interface is not present then fecthing IPv4 address will fail with error ENODEV
+            if (is_iface_present(XHS_IF_NAME))
+            {
+                DHCPMGR_LOG_INFO("%s interface is present creating dnsmasq", XHS_IF_NAME);
+                doExtraPools(&pHeadDhcpOptionsList, &iDhcpOptionVendorCount, bIsDhcpNsEnabled, cWanDhcpDns);
+            }
+            else
+            {
+                DHCPMGR_LOG_INFO("%s interface is not present, not adding dnsmasq entries", XHS_IF_NAME);
+            }
+
+            //Lost And Found Enable
+            syscfg_get(NULL, "lost_and_found_enable", cIotEnabled, sizeof(cIotEnabled));
+        /*        if (!strncmp(cIotEnabled, "true", 4))
+            {
+            DHCPMGR_LOG_INFO("IOT_LOG : DHCP server configuring for IOT");
+
+                syscfg_get(NULL, "iot_ifname", cIotIfName, sizeof(cIotIfName));
+
+                if( strstr( cIotIfName, "l2sd0.106")) {
+                  memset(cIotIfName, 0, sizeof(cIotIfName));
+                  syscfg_get( NULL, "iot_brname", cIotIfName, sizeof(cIotIfName));
+                }
+                syscfg_get(NULL, "iot_dhcp_start", cIotStartAddr, sizeof(cIotStartAddr));
+                syscfg_get(NULL, "iot_dhcp_end", cIotEndAddr, sizeof(cIotEndAddr));
+                syscfg_get(NULL, "iot_netmask", cIotNetMask, sizeof(cIotNetMask));
+
+            fprintf(l_fLocal_Dhcp_ConfFile, "interface=%s\n", cIotIfName);
+                if (!strncmp(g_cDhcp_Lease_Time, "-1", 2))
+                {
+                    //TODO add dns_only prefix
+                    fprintf(l_fLocal_Dhcp_ConfFile, "%sdhcp-range=%s,%s,%s,infinite\n",
+                           cDnsOnlyPrefix, cIotStartAddr, cIotEndAddr, cIotNetMask);
+                }
+                else
+                {
+                    //TODO add dns_only prefix
+                    fprintf(l_fLocal_Dhcp_ConfFile, "%sdhcp-range=%s,%s,%s,86400\n",
+                           cDnsOnlyPrefix, cIotStartAddr, cIotEndAddr, cIotNetMask);
+                }
+
+                // Add iot custom dns server configuration
+                if( bIsDhcpNsEnabled && bIsValidWanDhcpNs )
+                {
+                    fprintf(l_fLocal_Dhcp_ConfFile, "dhcp-option=%s,6,%s\n", cIotIfName, cWanDhcpDns);
+                    DHCPMGR_LOG_INFO("DHCP_SERVER : [%s] dhcp-option=%s,6,%s",cIotIfName, cIotIfName, cWanDhcpDns);
+                }
+            }
+        */
+            if ((!strncmp(cIotEnabled, "true", 4)) && (true == bIsDhcpNsEnabled) && (true == bIsValidWanDhcpNs))
+            {
+            // Add iot custom dns server configuration
+            char  cStrVar   [BUFF_LEN_512] = {0};
+            snprintf(cStrVar, sizeof(cStrVar),"%s,6,%s",cIotIfName,cWanDhcpDns);
+            DhcpOptionsList* pIotDhcpOptions = (DhcpOptionsList*)initNode(cStrVar,DHCP_OPTION);
+            if (NULL != pIotDhcpOptions)
+            {
+                if (!insertNode ((void*)&pHeadDhcpOptionsList, (void*)pIotDhcpOptions , DHCP_OPTION))
+                {
+                iDhcpOptionVendorCount++;
+                DHCPMGR_LOG_INFO("Iot:iDhcpOptionVendorCount: %d", iDhcpOptionVendorCount);
+                }
+            }
+            else
+            {
+                DHCPMGR_LOG_ERROR("%s:%d, Failed to init Node", __FUNCTION__, __LINE__);
+            }
+            DHCPMGR_LOG_INFO("DHCP_SERVER : [%s] dhcp-option=%s,6,%s", cIotIfName, cIotIfName, cWanDhcpDns);
+            }
+            DHCPMGR_LOG_INFO("DHCP server configuring for Mesh network");
+
+        #if defined (_COSA_INTEL_XB3_ARM_)
+        #if 0
+            fprintf(l_fLocal_Dhcp_ConfFile, "interface=l2sd0.112\n");
+            fprintf(l_fLocal_Dhcp_ConfFile, "dhcp-range=169.254.0.5,169.254.0.253,255.255.255.0,infinite\n");
+
+            // Add l2sd0.112 custom dns server configuration
+            if( bIsDhcpNsEnabled && bIsValidWanDhcpNs )
+            {
+            fprintf(l_fLocal_Dhcp_ConfFile, "dhcp-option=l2sd0.112,6,%s\n", cWanDhcpDns);
+            DHCPMGR_LOG_INFO("DHCP_SERVER : [l2sd0.112] dhcp-option=l2sd0.112,6,%s", cWanDhcpDns);
+            }
+
+            fprintf(l_fLocal_Dhcp_ConfFile, "interface=l2sd0.113\n");
+            fprintf(l_fLocal_Dhcp_ConfFile, "dhcp-range=169.254.1.5,169.254.1.253,255.255.255.0,infinite\n");
+
+            // Add l2sd0.113 custom dns server configuration
+            if( bIsDhcpNsEnabled && bIsValidWanDhcpNs )
+            {
+            fprintf(l_fLocal_Dhcp_ConfFile, "dhcp-option=l2sd0.113,6,%s\n", cWanDhcpDns);
+            DHCPMGR_LOG_INFO("DHCP_SERVER : [l2sd0.113] dhcp-option=l2sd0.113,6,%s", cWanDhcpDns);
+            }
+
+            // Mesh Bhaul vlan address pool
+
+            fprintf(l_fLocal_Dhcp_ConfFile, "interface=br403\n");
+            fprintf(l_fLocal_Dhcp_ConfFile, "dhcp-range=192.168.245.2,192.168.245.253,255.255.255.0,infinite\n");
+
+            // Add l2sd0.1060 custom dns server configuration
+            if( bIsDhcpNsEnabled && bIsValidWanDhcpNs )
+            {
+            fprintf(l_fLocal_Dhcp_ConfFile, "dhcp-option=br403,6,%s\n", cWanDhcpDns);
+            DHCPMGR_LOG_INFO("DHCP_SERVER : [br403] dhcp-option=br403,6,%s", cWanDhcpDns);
+            }
+
+            fprintf(l_fLocal_Dhcp_ConfFile, "interface=l2sd0.4090\n");
+            fprintf(l_fLocal_Dhcp_ConfFile, "dhcp-range=192.168.251.2,192.168.251.253,255.255.255.0,infinite\n");
+
+            // Add l2sd0.4090 custom dns server configuration
+            if( bIsDhcpNsEnabled && bIsValidWanDhcpNs )
+            {
+            fprintf(l_fLocal_Dhcp_ConfFile, "dhcp-option=l2sd0.4090,6,%s\n", cWanDhcpDns);
+            DHCPMGR_LOG_INFO("DHCP_SERVER : [l2sd0.4090] dhcp-option=l2sd0.4090,6,%s", cWanDhcpDns);
+            }
+
+            fprintf(l_fLocal_Dhcp_ConfFile, "interface=brebhaul\n");
+            fprintf(l_fLocal_Dhcp_ConfFile, "dhcp-range=169.254.85.5,169.254.85.253,255.255.255.0,infinite\n");
+
+            // Add brebhaul custom dns server configuration
+            if( bIsDhcpNsEnabled && bIsValidWanDhcpNs )
+            {
+            fprintf(l_fLocal_Dhcp_ConfFile, "dhcp-option=brebhaul,6,%s\n", cWanDhcpDns);
+            DHCPMGR_LOG_INFO("DHCP_SERVER : [brebhaul] dhcp-option=brebhaul,6,%s", cWanDhcpDns);
+            }
+        #endif
+        #elif defined (INTEL_PUMA7) || (defined (_COSA_BCM_ARM_) && !defined(_CBR_PRODUCT_REQ_)) || defined(_COSA_QCA_ARM_) // ARRIS XB6 ATOM, TCXB6
+        //    fprintf(l_fLocal_Dhcp_ConfFile, "interface=ath12\n");
+        //    fprintf(l_fLocal_Dhcp_ConfFile, "dhcp-range=169.254.0.5,169.254.0.253,255.255.255.0,infinite\n");
+
+            // Add ath12 custom dns server configuration
+            if( bIsDhcpNsEnabled && bIsValidWanDhcpNs )
+            {
+        //            fprintf(l_fLocal_Dhcp_ConfFile, "dhcp-option=ath12,6,%s\n", cWanDhcpDns);
+                char  cStrVar   [BUFF_LEN_512] = {0};
+                snprintf(cStrVar, sizeof(cStrVar),"%s,6,%s","ath12",cWanDhcpDns);
+                DhcpOptionsList* pDhcpOptions = (DhcpOptionsList*)initNode(cStrVar,DHCP_OPTION);
+                if (NULL != pDhcpOptions)
+                {
+                if (!insertNode ((void*)&pHeadDhcpOptionsList, (void*)pDhcpOptions , DHCP_OPTION))
+                {
+                    iDhcpOptionVendorCount++;
+                    DHCPMGR_LOG_INFO("%s:%d iDhcpOptionVendorCount:%d", __FUNCTION__, __LINE__, iDhcpOptionVendorCount);
+                }
+                }
+                else
+                {
+                DHCPMGR_LOG_ERROR("%s:%d, Failed to init Node", __FUNCTION__, __LINE__);
+                }   
+                DHCPMGR_LOG_INFO("DHCP_SERVER : [ath12] dhcp-option=ath12,6,%s", cWanDhcpDns);
+            }
+
+        //    fprintf(l_fLocal_Dhcp_ConfFile, "interface=ath13\n");
+        //    fprintf(l_fLocal_Dhcp_ConfFile, "dhcp-range=169.254.1.5,169.254.1.253,255.255.255.0,infinite\n");
+
+            // Add ath12 custom dns server configuration
+            if( bIsDhcpNsEnabled && bIsValidWanDhcpNs )
+            {
+         //           fprintf(l_fLocal_Dhcp_ConfFile, "dhcp-option=ath13,6,%s\n", cWanDhcpDns);
+                char  cStrVar   [BUFF_LEN_512] = {0};
+                snprintf(cStrVar, sizeof(cStrVar),"%s,6,%s","ath13",cWanDhcpDns);
+                DhcpOptionsList* pDhcpOptions = (DhcpOptionsList*)initNode(cStrVar,DHCP_OPTION);
+                if (NULL != pDhcpOptions)
+                {
+                if (!insertNode ((void*)&pHeadDhcpOptionsList, (void*)pDhcpOptions , DHCP_OPTION))
+                {
+                    iDhcpOptionVendorCount++;
+                    DHCPMGR_LOG_INFO("%s:%d, iDhcpOptionVendorCount:%d", __FUNCTION__, __LINE__, iDhcpOptionVendorCount);
+                }
+                }
+                else
+                {
+                DHCPMGR_LOG_ERROR("%s:%d, Failed to init Node", __FUNCTION__, __LINE__);
+                }
+                DHCPMGR_LOG_INFO("DHCP_SERVER : [ath13] dhcp-option=ath13,6,%s", cWanDhcpDns);
+            }
+
+         //   fprintf(l_fLocal_Dhcp_ConfFile, "interface=br403\n");
+         //   fprintf(l_fLocal_Dhcp_ConfFile, "dhcp-range=192.168.245.2,192.168.245.253,255.255.255.0,infinite\n");
+
+            // Add br403 custom dns server configuration
+            if( bIsDhcpNsEnabled && bIsValidWanDhcpNs )
+            {
+        //        fprintf(l_fLocal_Dhcp_ConfFile, "dhcp-option=br403,6,%s\n", cWanDhcpDns);
+            char cStrVar   [BUFF_LEN_512] = {0};
+            snprintf(cStrVar, sizeof(cStrVar),"%s,6,%s","br403",cWanDhcpDns);
+            DhcpOptionsList* pDhcpOptions = (DhcpOptionsList*)initNode(cStrVar,DHCP_OPTION);
+            if (NULL != pDhcpOptions)
+            {
+                if (!insertNode ((void*)&pHeadDhcpOptionsList, (void*)pDhcpOptions , DHCP_OPTION))
+                {
+                iDhcpOptionVendorCount++;
+                DHCPMGR_LOG_INFO("%s:%d iDhcpOptionVendorCount:%d", __FUNCTION__, __LINE__, iDhcpOptionVendorCount);
+                }
+            }
+            else
+            {
+                DHCPMGR_LOG_ERROR("%s:%d, Failed to init Node", __FUNCTION__, __LINE__);
+            }
+            DHCPMGR_LOG_INFO("DHCP_SERVER : [br403] dhcp-option=br403,6,%s", cWanDhcpDns);
+            }
+
+        //    fprintf(l_fLocal_Dhcp_ConfFile, "interface=brebhaul\n");
+        //    fprintf(l_fLocal_Dhcp_ConfFile, "dhcp-range=169.254.85.5,169.254.85.253,255.255.255.0,infinite\n");
+
+            // Add brebhaul custom dns server configuration
+            if( bIsDhcpNsEnabled && bIsValidWanDhcpNs )
+            {
+        //        fprintf(l_fLocal_Dhcp_ConfFile, "dhcp-option=brebhaul,6,%s\n", cWanDhcpDns);
+            char cStrVar   [BUFF_LEN_512] = {0};
+            snprintf(cStrVar, sizeof(cStrVar),"%s,6,%s","brebhaul",cWanDhcpDns);
+            DhcpOptionsList* pDhcpOptions = (DhcpOptionsList*)initNode(cStrVar,DHCP_OPTION);
+            if (NULL != pDhcpOptions)
+            {
+                if (!insertNode ((void*)&pHeadDhcpOptionsList, (void*)pDhcpOptions , DHCP_OPTION))
+                {
+                iDhcpOptionVendorCount++;
+                DHCPMGR_LOG_INFO("%s:%d  iDhcpOptionVendorCount:%d", __FUNCTION__, __LINE__, iDhcpOptionVendorCount);
+                }
+            }
+            else
+            {
+                DHCPMGR_LOG_ERROR("%s:%d, Failed to init Node", __FUNCTION__, __LINE__);
+            }
+            DHCPMGR_LOG_INFO("DHCP_SERVER : [brebhaul] dhcp-option=brebhaul,6,%s", cWanDhcpDns);
+            }
+        #endif
+
+        #if defined (_HUB4_PRODUCT_REQ_)
+        //    fprintf(l_fLocal_Dhcp_ConfFile, "interface=brlan6\n");
+        //    fprintf(l_fLocal_Dhcp_ConfFile, "dhcp-range=169.254.0.5,169.254.0.253,255.255.255.0,infinite\n");
+
+
+            // Add brlan112 custom dns server configuration
+            if( bIsDhcpNsEnabled && bIsValidWanDhcpNs )
+            {
+        //            fprintf(l_fLocal_Dhcp_ConfFile, "dhcp-option=brlan6,6,%s\n", cWanDhcpDns);
+                char cStrVar   [BUFF_LEN_512] = {0};
+                snprintf(cStrVar, sizeof(cStrVar),"%s,6,%s","brlan6",cWanDhcpDns);
+                DhcpOptionsList* pDhcpOptions = (DhcpOptionsList*)initNode(cStrVar,DHCP_OPTION);
+                if (NULL != pDhcpOptions)
+                {
+                if (!insertNode ((void*)&pHeadDhcpOptionsList, (void*)pDhcpOptions , DHCP_OPTION))
+                {
+                    iDhcpOptionVendorCount++;
+                    DHCPMGR_LOG_INFO("%s:%d iDhcpOptionVendorCount:%d", __FUNCTION__, __LINE__, iDhcpOptionVendorCount);
+                }
+                }
+                else
+                {
+                DHCPMGR_LOG_ERROR("%s:%d, Failed to init Node", __FUNCTION__, __LINE__);
+                }
+                DHCPMGR_LOG_INFO("DHCP_SERVER : [brlan6] dhcp-option=brlan6,6,%s", cWanDhcpDns);
+            }
+
+//    fprintf(l_fLocal_Dhcp_ConfFile, "interface=brlan7\n");
+//    fprintf(l_fLocal_Dhcp_ConfFile, "dhcp-range=169.254.1.5,169.254.1.253,255.255.255.0,infinite\n");
+
+        // Add brlan113 custom dns server configuration
+        if( bIsDhcpNsEnabled && bIsValidWanDhcpNs )
+        {
+//            fprintf(l_fLocal_Dhcp_ConfFile, "dhcp-option=brlan7,6,%s\n", cWanDhcpDns);
+            char cStrVar   [BUFF_LEN_512] = {0};
+            snprintf(cStrVar, sizeof(cStrVar),"%s,6,%s","brlan7",cWanDhcpDns);
+            DhcpOptionsList* pDhcpOptions = (DhcpOptionsList*)initNode(cStrVar,DHCP_OPTION);
+            if (NULL != pDhcpOptions)
+            {
+                if (!insertNode ((void*)&pHeadDhcpOptionsList, (void*)pDhcpOptions , DHCP_OPTION))
+                {
+                    iDhcpOptionVendorCount++;
+                    DHCPMGR_LOG_INFO("%s:%d iDhcpOptionVendorCount:%d\n",__FUNCTION__,__LINE__,iDhcpOptionVendorCount);
+                }
+            }
+            else
+            {
+                DHCPMGR_LOG_ERROR("%s:%d, Failed to init Node\n",__FUNCTION__,__LINE__);
+            }
+            DHCPMGR_LOG_INFO("DHCP_SERVER : [brlan7] dhcp-option=brlan7,6,%s", cWanDhcpDns);
+        }
+
+//       fprintf(l_fLocal_Dhcp_ConfFile, "interface=br403\n");
+//    fprintf(l_fLocal_Dhcp_ConfFile, "dhcp-range=192.168.245.2,192.168.245.253,255.255.255.0,infinite\n");
+
+    // Add br403 custom dns server configuration
+    if( bIsDhcpNsEnabled && bIsValidWanDhcpNs )
+    {
+//        fprintf(l_fLocal_Dhcp_ConfFile, "dhcp-option=br403,6,%s\n", cWanDhcpDns);
+        char cStrVar   [BUFF_LEN_512] = {0};
+        snprintf(cStrVar, sizeof(cStrVar),"%s,6,%s","br403",cWanDhcpDns);
+        DhcpOptionsList* pDhcpOptions = (DhcpOptionsList*)initNode(cStrVar,DHCP_OPTION);
+        if (NULL != pDhcpOptions)
+        {
+            if (!insertNode ((void*)&pHeadDhcpOptionsList, (void*)pDhcpOptions , DHCP_OPTION))
+            {
+                iDhcpOptionVendorCount++;
+                DHCPMGR_LOG_INFO("%s:%d. iDhcpOptionVendorCount:%d\n",__FUNCTION__,__LINE__,iDhcpOptionVendorCount);
+            }
+        }
+        else
+        {
+            DHCPMGR_LOG_ERROR("%s:%d, Failed to init Node\n",__FUNCTION__,__LINE__);
+        }
+        DHCPMGR_LOG_INFO("DHCP_SERVER : [br403] dhcp-option=br403,6,%s", cWanDhcpDns);
+    }
+#endif
+
+#if defined (_XB7_PRODUCT_REQ_)
+//    fprintf(l_fLocal_Dhcp_ConfFile, "interface=brlan112\n");
+//    fprintf(l_fLocal_Dhcp_ConfFile, "dhcp-range=169.254.0.5,169.254.0.253,255.255.255.0,infinite\n");
+
+
+        // Add brlan112 custom dns server configuration
+        if( bIsDhcpNsEnabled && bIsValidWanDhcpNs )
+        {
+//            fprintf(l_fLocal_Dhcp_ConfFile, "dhcp-option=brlan112,6,%s\n", cWanDhcpDns);
+            char cStrVar   [BUFF_LEN_512] = {0};
+            snprintf(cStrVar, sizeof(cStrVar),"%s,6,%s","brlan112",cWanDhcpDns);
+            DhcpOptionsList* pDhcpOptions = (DhcpOptionsList*)initNode(cStrVar,DHCP_OPTION);
+            if (NULL != pDhcpOptions)
+            {
+                if (!insertNode ((void*)&pHeadDhcpOptionsList, (void*)pDhcpOptions , DHCP_OPTION))
+                {
+                    iDhcpOptionVendorCount++;
+                    DHCPMGR_LOG_INFO("%s:%d iDhcpOptionVendorCount:%d\n",__FUNCTION__,__LINE__,iDhcpOptionVendorCount);
+                }
+            }
+            else
+            {
+                DHCPMGR_LOG_ERROR("%s:%d, Failed to init Node\n",__FUNCTION__,__LINE__);
+            }
+            DHCPMGR_LOG_INFO("DHCP_SERVER : [brlan112] dhcp-option=brlan112,6,%s", cWanDhcpDns);
+        }
+
+//    fprintf(l_fLocal_Dhcp_ConfFile, "interface=brlan113\n");
+//    fprintf(l_fLocal_Dhcp_ConfFile, "dhcp-range=169.254.1.5,169.254.1.253,255.255.255.0,infinite\n");
+
+        // Add brlan113 custom dns server configuration
+        if( bIsDhcpNsEnabled && bIsValidWanDhcpNs )
+        {
+//            fprintf(l_fLocal_Dhcp_ConfFile, "dhcp-option=brlan113,6,%s\n", cWanDhcpDns);
+            char cStrVar   [BUFF_LEN_512] = {0};
+            snprintf(cStrVar, sizeof(cStrVar),"%s,6,%s","brlan113",cWanDhcpDns);
+            DhcpOptionsList* pDhcpOptions = (DhcpOptionsList*)initNode(cStrVar,DHCP_OPTION);
+            if (NULL != pDhcpOptions)
+            {
+                if (!insertNode ((void*)&pHeadDhcpOptionsList, (void*)pDhcpOptions , DHCP_OPTION))
+                {
+                    iDhcpOptionVendorCount++;
+                    DHCPMGR_LOG_INFO("%s:%d  iDhcpOptionVendorCount:%d\n",__FUNCTION__,__LINE__,iDhcpOptionVendorCount);
+                }
+            }
+            else
+            {
+                DHCPMGR_LOG_ERROR("%s:%d, Failed to init Node\n",__FUNCTION__,__LINE__);
+            }
+            DHCPMGR_LOG_INFO("DHCP_SERVER : [brlan113] dhcp-option=brlan113,6,%s", cWanDhcpDns);
+        }
+
+#endif
+#if defined (_PLATFORM_TURRIS_) 
+    //Wifi Backhaul link local connections // NEED TO ADD NEW DHCPMANAGER IMPELENTATION FOR _PLATFORM_TURRIS_
+    fprintf(l_fLocal_Dhcp_ConfFile, "interface=wifi2\n");
+    fprintf(l_fLocal_Dhcp_ConfFile, "dhcp-range=169.254.0.5,169.254.0.126,255.255.255.128,infinite\n");
+    fprintf(l_fLocal_Dhcp_ConfFile, "dhcp-option=wifi2,3\n");
+    fprintf(l_fLocal_Dhcp_ConfFile, "dhcp-option=wifi2,6\n");
+
+    fprintf(l_fLocal_Dhcp_ConfFile, "interface=wifi3\n");
+    fprintf(l_fLocal_Dhcp_ConfFile, "dhcp-range=169.254.1.5,169.254.1.126,255.255.255.128,infinite\n");
+    fprintf(l_fLocal_Dhcp_ConfFile, "dhcp-option=wifi3,3\n");
+    fprintf(l_fLocal_Dhcp_ConfFile, "dhcp-option=wifi3,6\n");
+
+    fprintf(l_fLocal_Dhcp_ConfFile, "interface=wifi6\n");
+    fprintf(l_fLocal_Dhcp_ConfFile, "dhcp-range=169.254.0.130,169.254.0.252,255.255.255.128,infinite\n");
+    fprintf(l_fLocal_Dhcp_ConfFile, "dhcp-option=wifi6,3\n");
+    fprintf(l_fLocal_Dhcp_ConfFile, "dhcp-option=wifi6,6\n");
+
+    fprintf(l_fLocal_Dhcp_ConfFile, "interface=wifi7\n");
+    fprintf(l_fLocal_Dhcp_ConfFile, "dhcp-range=169.254.1.130,169.254.1.252,255.255.255.128,infinite\n");
+    fprintf(l_fLocal_Dhcp_ConfFile, "dhcp-option=wifi7,3\n");
+    fprintf(l_fLocal_Dhcp_ConfFile, "dhcp-option=wifi7,6\n");
+    fprintf(l_fLocal_Dhcp_ConfFile, "dhcp-script=/etc/dhcp_script.sh\n");
+#endif
+
+#if defined (WIFI_MANAGE_SUPPORTED)
+       //interface deatils will be provided by LAN Manager
+#endif /*WIFI_MANAGE_SUPPORTED*/
+
+        if (TRUE == bCaptivePortalMode)
+        {
+                //In factory default condition, prepare whitelisting and redirection IP
+            char cStrVar   [BUFF_LEN_512] = {0};
+                 snprintf(cStrVar, sizeof(cStrVar),"/#/%s", cLanIpAddress);
+        pDomainAddress =(DomainAddress*)initNode(cStrVar, DOMAIN_SPECIFIC_ADDRESS);
+        if (NULL != pDomainAddress)
+        {
+            DHCPMGR_LOG_INFO("%s:%d, DomainAddress : %s\n",__FUNCTION__,__LINE__, pDomainAddress->cDomainSpecificAddr);
+            if (!insertNode ((void*)&pHeadDomainAddress, (void*)pDomainAddress, DOMAIN_SPECIFIC_ADDRESS))
+            {
+                iDomainAddrCount++;
+                DHCPMGR_LOG_INFO("%s:%d, iDomainAddrCount : %d\n",__FUNCTION__,__LINE__, iDomainAddrCount);
+            }
+        }
+        if(FALSE == l_bRfCp)
+        {
+//            fprintf(l_fLocal_Dhcp_ConfFile, "dhcp-option=252,\"\\n\"\n");
+            char cStrVar   [BUFF_LEN_512] = {0};
+            snprintf(cStrVar, sizeof(cStrVar),"252,\"\\n\"");
+            //fprintf(l_fLocal_Dhcp_ConfFile, "dhcp-option=252,\"\\n\"\n");
+            DhcpOptionsList* pRfCapDhcpOptions = (DhcpOptionsList*)initNode(cStrVar,DHCP_OPTION);
+            if (NULL != pRfCapDhcpOptions)
+            {
+                DHCPMGR_LOG_INFO("%s:%d, RfCapDhcp-option : %s\n",__FUNCTION__,__LINE__,pRfCapDhcpOptions->cDhcpOptions);
+                if (!insertNode ((void*)&pHeadDhcpOptionsList, (void*)pRfCapDhcpOptions, DHCP_OPTION))
+                {
+                    iDhcpOptionVendorCount++;
+                    DHCPMGR_LOG_INFO("%s:%d, iDhcpOptionVendorCount : %d\n",__FUNCTION__,__LINE__,iDhcpOptionVendorCount);
+                }
+            }
+            prepare_whitelist_urls(l_fLocal_Dhcp_ConfFile);
+        }
+#if 0 //TBD
+        ifl_set_event( "captiveportaldhcp", "completed");
+#endif
+        }
+
+        //Prepare static dns urls
+        if( bIsDhcpNsEnabled )
+        {
+               prepare_static_dns_urls( l_fLocal_Dhcp_ConfFile );
+        }
+
+//        remove_file(DHCP_CONF);
+        fclose(l_fLocal_Dhcp_ConfFile);
+        copy_file(l_fLocal_Dhcp_ConfFile, DHCP_CONF);
+        remove_file(l_fLocal_Dhcp_ConfFile);
+        DHCPMGR_LOG_INFO("DHCP SERVER : Completed preparing DHCP configuration");
+#if defined (WAN_FAILOVER_SUPPORTED)
+    #if !defined (RDKB_EXTENDER_ENABLED)
+        char lan_ipaddr[20]={'\0'};
+        char l_cLine[255] = {0};
+        FILE *l_fResolv_Conf = NULL;
+        int Flag=0;
+        l_fResolv_Conf = fopen(RESOLV_CONF, "r");
+        if (NULL != l_fResolv_Conf)
+        {
+            while(fgets(l_cLine, 80, l_fResolv_Conf) != NULL )
+            {
+                char *property = NULL;
+                if (NULL != (property = strstr(l_cLine, "127.0.0.1")))
+                {
+                    Flag=1;
+                    break;
+                }
+            }
+            fclose(l_fResolv_Conf);
+            if(Flag==1)
+            {
+                l_fResolv_Conf = fopen(RESOLV_CONF, "w");
+                if (NULL != l_fResolv_Conf)
+                {
+                    syscfg_get(NULL, "lan_ipaddr", lan_ipaddr, sizeof(lan_ipaddr));
+                    //fprintf(g_fArmConsoleLog, "strlen of lan_ipaddr:%d\n",strlen(lan_ipaddr));
+                    if(strlen(lan_ipaddr)>0)
+                    {
+                        fprintf(l_fResolv_Conf,"nameserver %s\n",lan_ipaddr);
+                    }
+                    fclose(l_fResolv_Conf);
+                }
+            }
+        }
+        else
+        {
+            DHCPMGR_LOG_INFO("opening of %s file failed with error:%d\n", RESOLV_CONF, errno);
+        }
+    #endif//RDKB_EXTENDER_ENABLED
+#endif //WAN_FAILOVER_SUPPORTED
+        DHCPMGR_LOG_INFO("%s:%d, iDhcpOptionVendorCount:%d\n",__FUNCTION__,__LINE__,iDhcpOptionVendorCount);
+    if (0 < iDhcpOptionVendorCount)
+    {
+        pGlbDhcpCfg->sDhcpOptions.iVendorIdCount = iDhcpOptionVendorCount;
+        pGlbDhcpCfg->sDhcpOptions.ppVendorId = malloc (sizeof(char*)*iDhcpOptionVendorCount);
+        if (NULL != pGlbDhcpCfg->sDhcpOptions.ppVendorId)
+        {
+            DhcpOptionsList * pDhcpOptionList = pHeadDhcpOptionsList;
+            for (int iCount=0; iCount < iDhcpOptionVendorCount; iCount++)
+            {
+                pGlbDhcpCfg->sDhcpOptions.ppVendorId[iCount] = malloc (BUFF_LEN_64);
+                if (NULL != pGlbDhcpCfg->sDhcpOptions.ppVendorId[iCount])
+                {
+                    memset (pGlbDhcpCfg->sDhcpOptions.ppVendorId[iCount], 0, BUFF_LEN_64);
+                    if (NULL != pDhcpOptionList)
+                    {
+                        snprintf (pGlbDhcpCfg->sDhcpOptions.ppVendorId[iCount], BUFF_LEN_64, "%s",pDhcpOptionList->cDhcpOptions);
+                        pDhcpOptionList = (DhcpOptionsList*) deleteNode(pDhcpOptionList, DHCP_OPTION);
+                    }
+                    else
+                    {
+                        DHCPMGR_LOG_ERROR("%s:%d, pDhcpOptionList is NULL\n",__FUNCTION__,__LINE__);
+                    }
+                }
+            }
+        }
+    }
+    if (0 < iDhcpVendorClassCount)
+    {
+        pGlbDhcpCfg->sDhcpOptions.iVendorClassCount = iDhcpVendorClassCount;
+        pGlbDhcpCfg->sDhcpOptions.ppVendorClass = malloc (sizeof(char*)*iDhcpVendorClassCount);
+        if (NULL != pGlbDhcpCfg->sDhcpOptions.ppVendorClass)
+        {
+            DhcpVendorClassList * pDhcpVendorClass = pHeadDhcpVendorClass;
+            for (int iCount=0; iCount < iDhcpVendorClassCount; iCount++)
+            {
+                pGlbDhcpCfg->sDhcpOptions.ppVendorClass[iCount] = malloc (BUFF_LEN_64);
+                if (NULL != pGlbDhcpCfg->sDhcpOptions.ppVendorClass[iCount])
+                {
+                    memset (pGlbDhcpCfg->sDhcpOptions.ppVendorClass[iCount], 0, BUFF_LEN_64);
+                    if (NULL != pDhcpVendorClass)
+                    {
+                        snprintf (pGlbDhcpCfg->sDhcpOptions.ppVendorClass[iCount], BUFF_LEN_64, "%s",pDhcpVendorClass->cVendorClass);
+                        pDhcpVendorClass = (DhcpVendorClassList*) deleteNode(pDhcpVendorClass, DHCP_VENDOR_CLASS);
+                    }
+                    else
+                    {
+                        DHCPMGR_LOG_ERROR("%s:%d, pDhcpVendorClass is NULL\n",__FUNCTION__,__LINE__);
+                    }
+                }
+            }
+        }
+    }
+    DHCPMGR_LOG_INFO("%s:%d, iDomainAddrCount:%d\n",__FUNCTION__,__LINE__,iDomainAddrCount);
+    if (0 < iDomainAddrCount)
+    {
+        pGlbDhcpCfg->sDomainSpecific.iDomainSpecificAddressCount = iDomainAddrCount;
+        pGlbDhcpCfg->sDomainSpecific.bIsDomainSpecificEnabled = true;
+        pGlbDhcpCfg->sDomainSpecific.ppDomainSpecificAddresses = malloc(sizeof(char*)*iDomainAddrCount);
+        if (NULL != pGlbDhcpCfg->sDomainSpecific.ppDomainSpecificAddresses)
+        {
+            DomainAddress *pDomainAddr = pHeadDomainAddress;
+            for (int iCount=0; iCount < iDomainAddrCount; iCount++)
+            {
+                pGlbDhcpCfg->sDomainSpecific.ppDomainSpecificAddresses[iCount] = malloc (BUFF_LEN_64);
+                if (NULL != pGlbDhcpCfg->sDomainSpecific.ppDomainSpecificAddresses[iCount])
+                {
+                    memset(pGlbDhcpCfg->sDomainSpecific.ppDomainSpecificAddresses[iCount], 0, BUFF_LEN_64);
+                    if (NULL != pDomainAddr)
+                    {
+                        snprintf(pGlbDhcpCfg->sDomainSpecific.ppDomainSpecificAddresses[iCount], BUFF_LEN_64,"%s",pDomainAddr->cDomainSpecificAddr);
+                        pDomainAddr = (DomainAddress*)deleteNode(pDomainAddr, DOMAIN_SPECIFIC_ADDRESS);
+                    }
+                    else
+                    {
+                        DHCPMGR_LOG_INFO("%s:%d, pDomainAddr is NULL\n",__FUNCTION__,__LINE__);
+                    }
+                }
+            }
+        }
+    }
+    if (0 < iRedirectionAddrCount)
+    {
+        DHCPMGR_LOG_INFO("%s:%d, iRedirectionAddrCount:%d\n",__FUNCTION__,__LINE__,iRedirectionAddrCount);
+        pGlbDhcpCfg->sRedirectInfo.iRedirectionUrlCount = iRedirectionAddrCount;
+        pGlbDhcpCfg->sRedirectInfo.bIsRedirectionEnabled = true;
+        pGlbDhcpCfg->sRedirectInfo.ppRedirectionUrl = malloc(sizeof(char*)*iRedirectionAddrCount);
+        if (NULL != pGlbDhcpCfg->sRedirectInfo.ppRedirectionUrl)
+        {
+            RedirectionAddress *pRedirectionAddr = pHeadRedirectionAddr;
+            for (int iCount=0; iCount < iRedirectionAddrCount; iCount++)
+            {
+                pGlbDhcpCfg->sRedirectInfo.ppRedirectionUrl[iCount] = malloc (BUFF_LEN_128);
+                if (NULL != pGlbDhcpCfg->sRedirectInfo.ppRedirectionUrl[iCount])
+                {
+                    memset(pGlbDhcpCfg->sRedirectInfo.ppRedirectionUrl[iCount], 0, BUFF_LEN_128);
+                    if (NULL != pRedirectionAddr)
+                    {
+                        snprintf(pGlbDhcpCfg->sRedirectInfo.ppRedirectionUrl[iCount], BUFF_LEN_128,"%s",pRedirectionAddr->cRedirectionAddr);
+                        pRedirectionAddr = (RedirectionAddress*)deleteNode(pRedirectionAddr, REDIRECTION_ADDRESS);
+                    }
+                    else
+                    {
+                        DHCPMGR_LOG_INFO("%s:%d, pRedirectionAddr is NULL\n",__FUNCTION__,__LINE__);
+                    }
+                }
+            }
+        }
+    }
+    return 0;
 }
 
 int prepare_hostname()
@@ -1924,6 +3844,115 @@ int prepare_dhcp_conf (char *input)
 
 void get_dhcp_option_for_brlan0( char *pDhcpNs_OptionString )
 {
+	char l_cDhcpNs_1[ 128 ] 	 			 = { 0 },
+		 l_cDhcpNs_2[ 128 ] 	 			 = { 0 },
+		 l_cDhcpNs_3[ 128 ] 				 = { 0 },
+                 l_cLocalNs[ 128 ]                               = { 0 },
+                 l_cWan_Dhcp_Dns[ 256 ]                          = { 0 },
+		 l_cDhcpNs_OptionString[ 1024 ] 	         = { 0 },
+		 l_cDhcpNs_OptionString_new[ 1424 ]              = { 0 }; //CID 177296 : Uninitialized scalar variable
+         errno_t safec_rc                                = -1;
+
+    // Static LAN DNS
+	syscfg_get(NULL, "dhcp_nameserver_1", l_cDhcpNs_1, sizeof(l_cDhcpNs_1));
+	syscfg_get(NULL, "dhcp_nameserver_2", l_cDhcpNs_2, sizeof(l_cDhcpNs_2));	
+	syscfg_get(NULL, "dhcp_nameserver_3", l_cDhcpNs_3, sizeof(l_cDhcpNs_3));
+        ifl_get_event("current_lan_ipaddr", l_cLocalNs, sizeof(l_cLocalNs));
+
+	safec_rc = strcpy_s( l_cDhcpNs_OptionString, sizeof(l_cDhcpNs_OptionString),"dhcp-option=brlan0,6");
+	ERR_CHK(safec_rc);
+
+	if( ( '\0' != l_cDhcpNs_1[ 0 ] ) && \
+		( 0 != strcmp( l_cDhcpNs_1, "0.0.0.0" ) ) 
+	  )
+	{
+		safec_rc = sprintf_s( l_cDhcpNs_OptionString_new, sizeof(l_cDhcpNs_OptionString_new),"%s,%s", l_cDhcpNs_OptionString, l_cDhcpNs_1 );
+		if(safec_rc < EOK){
+			ERR_CHK(safec_rc);
+		}
+	}
+
+	if( ( '\0' != l_cDhcpNs_2[ 0 ] ) && \
+		( 0 != strcmp( l_cDhcpNs_2, "0.0.0.0" ) ) 
+	  )
+	{
+		memset(l_cDhcpNs_OptionString_new, 0 ,sizeof(l_cDhcpNs_OptionString_new));
+		safec_rc = sprintf_s( l_cDhcpNs_OptionString_new, sizeof(l_cDhcpNs_OptionString_new),"%s,%s", l_cDhcpNs_OptionString, l_cDhcpNs_2 );
+		if(safec_rc < EOK){
+			ERR_CHK(safec_rc);
+		}
+	}
+
+	
+	if( ( '\0' != l_cDhcpNs_3[ 0 ] ) && \
+		( 0 != strcmp( l_cDhcpNs_3, "0.0.0.0" ) ) 
+	  )
+	{
+		memset(l_cDhcpNs_OptionString_new, 0 ,sizeof(l_cDhcpNs_OptionString_new));
+		safec_rc = sprintf_s( l_cDhcpNs_OptionString_new, sizeof(l_cDhcpNs_OptionString_new),"%s,%s", l_cDhcpNs_OptionString, l_cDhcpNs_3 );
+        if(safec_rc < EOK){
+           ERR_CHK(safec_rc);
+        }
+	}
+
+        char l_cSecWebUI_Enabled[8] = {0};
+	FILE *l_fResolv_Conf = NULL;
+	char l_cLine[255] = {0};
+        syscfg_get(NULL, "SecureWebUI_Enable", l_cSecWebUI_Enabled, sizeof(l_cSecWebUI_Enabled));
+        if (!strncmp(l_cSecWebUI_Enabled, "true", 4))
+        {
+                check_and_get_wan_dhcp_dns( l_cWan_Dhcp_Dns );
+		//Read the nameserver addresses from reslov.conf
+		if ( !(l_cWan_Dhcp_Dns[0]) ) {
+			l_fResolv_Conf = fopen(RESOLV_CONF, "r");
+			if (NULL != l_fResolv_Conf)
+			{
+				while(fgets(l_cLine, 80, l_fResolv_Conf) != NULL )
+				{
+					char *property = NULL;
+					if (NULL != (property = strstr(l_cLine, "nameserver ")))
+					{
+						property = property + strlen("nameserver ");
+						if (strstr(property, "."))
+						{
+							strncat(l_cWan_Dhcp_Dns, property, (strlen(property) - 1));
+							//Add , to separate dns addresses
+							l_cWan_Dhcp_Dns[strlen(l_cWan_Dhcp_Dns)]=',';
+						}
+					}
+				}
+				// Adding NULL at the end of dhcp options addresses
+				if(strlen(l_cWan_Dhcp_Dns) != 0)
+					l_cWan_Dhcp_Dns[strlen(l_cWan_Dhcp_Dns)-1]='\0';
+				fclose(l_fResolv_Conf);
+			}
+			else
+			{
+				DHCPMGR_LOG_ERROR("%s:%d DHCP SERVER : get_dhcp_option_for_brlan0 :opening file %s failed\n",__FUNCTION__,__LINE__, RESOLV_CONF );
+			}
+		}
+		DHCPMGR_LOG_INFO("%s:%d DHCP SERVER : get_dhcp_option_for_brlan0:%s\n",__FUNCTION__,__LINE__, l_cWan_Dhcp_Dns );
+		memset(l_cDhcpNs_OptionString_new, 0 ,sizeof(l_cDhcpNs_OptionString_new));
+		if ( '\0' != l_cWan_Dhcp_Dns[ 0 ] ){
+                    safec_rc = sprintf_s( l_cDhcpNs_OptionString_new, sizeof(l_cDhcpNs_OptionString_new),"%s,%s,%s", l_cDhcpNs_OptionString, l_cWan_Dhcp_Dns, l_cLocalNs );
+                    if(safec_rc < EOK){
+                      ERR_CHK(safec_rc);
+                    }
+                }    
+                else{
+                    safec_rc = sprintf_s( l_cDhcpNs_OptionString_new, sizeof(l_cDhcpNs_OptionString_new),"%s,%s", l_cDhcpNs_OptionString, l_cLocalNs );
+                    if(safec_rc < EOK){
+                       ERR_CHK(safec_rc);
+                    }
+                }
+        }
+        // Copy custom dns servers
+       safec_rc = strcpy_s( pDhcpNs_OptionString, 1024, l_cDhcpNs_OptionString_new ); /* Here pDhcpNs_OptionString is pointer, it's pointing to the array size is 1024 bytes */
+       ERR_CHK(safec_rc);
+}
+
+void get_dhcp_option_for_brlan0_dummy( char *pDhcpNs_OptionString )
+{
         char l_cDhcpNs_1[ 128 ]                                  = { 0 },
                  l_cDhcpNs_2[ 128 ]                              = { 0 },
                  l_cDhcpNs_3[ 128 ]                              = { 0 },
@@ -2060,8 +4089,6 @@ void prepare_static_dns_urls(FILE *fp_local_dhcp_conf)
 {
         char  l_cLine[ 128 ]            = { 0 };
         FILE *l_fStaticDns_Urls         = NULL;
-
-        DHCPMGR_LOG_INFO();
 
         l_fStaticDns_Urls = fopen( STATIC_DNS_URLS_FILE, "r" );
         if (NULL != l_fStaticDns_Urls)

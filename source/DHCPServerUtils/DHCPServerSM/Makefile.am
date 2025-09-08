@@ -19,16 +19,17 @@
 AM_CFLAGS = -fno-exceptions -Wall -Wextra
 AM_LDFLAGS = -lz -lpthread -lccsp_common $(DBUS_LIBS)
 
-lib_LTLIBRARIES = libCcspDhcpMgr_Dhcpv4Server.la
+noinst_LTLIBRARIES = libCcspDhcpMgr_DhcpServerSM.la
 
-libCcspDhcpMgr_Dhcpv4Server_la_CPPFLAGS = -I$(top_srcdir)/source/DHCPServerUtils/DHCPv4Server/include \
+libCcspDhcpMgr_DhcpServerSM_la_CPPFLAGS = -I$(top_srcdir)/source/DHCPServerUtils/DHCPServerSM/include \
                                           -I$(top_srcdir)/source/DHCPServerUtils/utils \
                                           -I$(top_srcdir)/source/DHCPServerUtils/utils/include \
+                                          -I$(top_srcdir)/source/DHCPServerUtils/DHCPv4Server/include \
                                           -I$(top_srcdir)/source/DHCPMgrInterface \
                                           -I$(top_srcdir)/source/DHCPMgrInterface/include \
                                           -I$(top_srcdir)/source/DHCPClientUtils/DHCPv4Client/include
                                           # Eliminate above dependency by making use of common Utils.
 
-libCcspDhcpMgr_Dhcpv4Server_la_SOURCES = dhcp_server_functions.c service_dhcp_server.c dhcpv4_server_interface.c
+libCcspDhcpMgr_DhcpServerSM_la_SOURCES = DHCPServerSM.c
 
-libCcspDhcpMgr_Dhcpv4Server_la_LIBADD = -lccsp_common -ltelemetry_msgsender -lulog -lsyscfg -lsysevent -ltime_conversion -lprint_uptime -lnet -lDhcpServerApis -llanconfig
+libCcspDhcpMgr_DhcpServerSM_la_LIBADD = -lccsp_common -ltelemetry_msgsender -lulog -lsyscfg -lsysevent -ltime_conversion -lprint_uptime -lnet -lDhcpServerApis
