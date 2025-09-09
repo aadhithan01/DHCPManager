@@ -73,6 +73,7 @@ typedef struct _redirectionAddress_
 }RedirectionAddress;
 
 int Construct_dhcp_configuration(DhcpInterfaceConfig ** ppHeadDhcpIf, int  pDhcpIfacesCount, char * pInput, GlobalDhcpConfig *pGlbDhcpCfg, LanConfig *pLanConfigs);
+void printDhcpConfig (DhcpInterfaceConfig **ppDhcpCfgs, int iDhcpIfCount, GlobalDhcpConfig * pGlbDhcpCfg);
 int  fillInterfaceDetails(DhcpIfaces *pDhcpIfaces, int iDhcpIfacesCount, DhcpInterfaceConfig ***ppDhcpCfgs);
 void freeMemoryDHCP(DhcpInterfaceConfig **ppDhcpCfgs, int iDhcpIfCount, GlobalDhcpConfig * pGlbDhcpCfg);
 int prepare_hostname();

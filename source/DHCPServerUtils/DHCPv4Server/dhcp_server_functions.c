@@ -169,6 +169,62 @@ static unsigned int isValidSubnetMask(char *subnetMask)
         return 1;
 }
 
+void printDhcpConfig (DhcpInterfaceConfig **ppDhcpCfgs, int iDhcpIfCount, GlobalDhcpConfig * pGlbDhcpCfg)
+{
+    DHCPMGR_LOG_INFO("%s : %d Global DHCP Configurations\n", __FUNCTION__, __LINE__);
+    DHCPMGR_LOG_INFO("%s : %d ResolvCfg : %s\n",__FUNCTION__,__LINE__, pGlbDhcpCfg->cResolvCfgFile);
+    DHCPMGR_LOG_INFO("%s : %d Leasefile : %s\n",__FUNCTION__,__LINE__, pGlbDhcpCfg->cDhcpLeaseFile);
+    DHCPMGR_LOG_INFO("%s : %d Hotsfile  : %s\n",__FUNCTION__,__LINE__, pGlbDhcpCfg->cDhcpHostsFile);
+    DHCPMGR_LOG_INFO("%s : %d OptsFile  : %s\n",__FUNCTION__,__LINE__, pGlbDhcpCfg->cDhcpOptsFile);
+    DHCPMGR_LOG_INFO("%s : %d cDomain   : %s\n",__FUNCTION__,__LINE__, pGlbDhcpCfg->cDomain);
+    DHCPMGR_LOG_INFO("%s : %d DomainNeeded : %s\n",__FUNCTION__,__LINE__, pGlbDhcpCfg->bDomainNeeded ? "true" : "false");
+    DHCPMGR_LOG_INFO("%s : %d ExpandHosts  : %s\n",__FUNCTION__,__LINE__, pGlbDhcpCfg->bExpandHosts ? "true" : "false");
+    DHCPMGR_LOG_INFO("%s : %d BogusPriv    : %s\n",__FUNCTION__,__LINE__, pGlbDhcpCfg->bBogusPriv ? "true" : "false");
+    for (int iCount = 0; iCount < pGlbDhcpCfg->sDhcpOptions.iVendorIdCount; iCount++)
+    {
+        DHCPMGR_LOG_INFO("%s : %d Dhcp-option : %s\n",__FUNCTION__,__LINE__, pGlbDhcpCfg->sDhcpOptions.ppVendorId[iCount]);
+    }
+    for (int iCount = 0; iCount < pGlbDhcpCfg->sDhcpOptions.iVendorClassCount; iCount++)
+    {
+        DHCPMGR_LOG_INFO("%s : %d Dhcp-class : %s\n",__FUNCTION__,__LINE__, pGlbDhcpCfg->sDhcpOptions.ppVendorClass[iCount]);
+    }
+    DHCPMGR_LOG_INFO("Domain-Specific Enabled : %s\n", pGlbDhcpCfg->sDomainSpecific.bIsDomainSpecificEnabled ? "true" : "false");
+    for (int iCount = 0; iCount < pGlbDhcpCfg->sDomainSpecific.iDomainSpecificAddressCount; iCount++)
+    {
+        DHCPMGR_LOG_INFO("DomainSpecificAddress : %s\n", pGlbDhcpCfg->sDomainSpecific.ppDomainSpecificAddresses[iCount]);
+    }
+    DHCPMGR_LOG_INFO("RedirectInfo Enabled : %s\n", pGlbDhcpCfg->sRedirectInfo.bIsRedirectionEnabled ? "true" : "false");
+    for (int iCount = 0; iCount < pGlbDhcpCfg->sRedirectInfo.iRedirectionUrlCount; iCount++)
+    {
+        DHCPMGR_LOG_INFO("RedirectionUrl : %s\n", pGlbDhcpCfg->sRedirectInfo.ppRedirectionUrl[iCount]);
+    }
+    DHCPMGR_LOG_INFO("%s:%d, checking for ppDhcpCfgs is NULL or not \n", __FUNCTION__,__LINE__);
+    if (NULL == ppDhcpCfgs)
+    {
+        DHCPMGR_LOG_INFO("%s:%d, ppDhcpCfgs is NULL\n", __FUNCTION__,__LINE__);
+        return;
+    }
+    if (NULL == ppDhcpCfgs[0])
+    {
+        DHCPMGR_LOG_INFO("%s:%d, ppDhcpCfgs[0] is NULL\n", __FUNCTION__,__LINE__);
+        return;
+    }
+    for (int iCount = 0; iCount < iDhcpIfCount; iCount++)
+    {
+        DHCPMGR_LOG_INFO("Interface %d Configurations of %d\n", iCount, iDhcpIfCount);
+        DHCPMGR_LOG_INFO("Interface Enabled : %s\n", ppDhcpCfgs[iCount]->bIsDhcpEnabled ? "true" : "false");
+        DHCPMGR_LOG_INFO("Interface Name : %s\n", ppDhcpCfgs[iCount]->cGatewayName);
+        DHCPMGR_LOG_INFO("Lease Time : %s\n", ppDhcpCfgs[iCount]->cLeaseDuration);
+        DHCPMGR_LOG_INFO("Subnet Mask : %s\n", ppDhcpCfgs[iCount]->cSubnetMask);
+        DHCPMGR_LOG_INFO("Start Address : %s\n", ppDhcpCfgs[iCount]->sAddressPool.cStartAddress);
+        DHCPMGR_LOG_INFO("End Address : %s\n", ppDhcpCfgs[iCount]->sAddressPool.cEndAddress);
+        DHCPMGR_LOG_INFO("DhcpTag Num : %d\n", ppDhcpCfgs[iCount]->sAddressPool.iDhcpTagNum);
+        DHCPMGR_LOG_INFO("InputStr : %s\n", ppDhcpCfgs[iCount]->cInputStr);
+        DHCPMGR_LOG_INFO("Name server Enabled : %s\n", ppDhcpCfgs[iCount]->sDhcpNameServer.bDhcpNameServerEnabled ? "true" : "false");
+        DHCPMGR_LOG_INFO("Name server IP : %s\n", ppDhcpCfgs[iCount]->sDhcpNameServer.cDhcpNameServerIp);
+    }
+}
+
 static int isValidLANIP(const char* ipStr)
 {
         int octet1,octet2,octet3,octet4;

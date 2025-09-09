@@ -1,8 +1,4 @@
 <?xml version="1.0" encoding="utf-8" ?>
-<?define FEATURE_SUPPORT_MAPT_NAT46=True?>
-<?define FEATURE_SUPPORT_MAPT_NAT46=True?>
-<?define FEATURE_SUPPORT_MAPT_NAT46=True?>
-<?define FEATURE_SUPPORT_MAPT_NAT46=True?>
 <!--
  If not stated otherwise in this file or this component's LICENSE file the
  following copyright and licenses apply:
@@ -291,6 +287,13 @@
             <syntax>bool</syntax>
             <writable>true</writable>
           </parameter>
+          <parameter>
+            <name>Action</name>
+            <type>string</type>
+            <syntax>string</syntax>
+            <writable>true</writable>
+          </parameter>
+
 <?ifndef BCI?>
           <parameter>
             <name>StaticClientsData</name>

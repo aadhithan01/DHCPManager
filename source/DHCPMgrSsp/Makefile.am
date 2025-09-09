@@ -30,6 +30,7 @@ CcspDHCPMgr_CPPFLAGS = -I$(top_srcdir)/source/TR-181/include \
                        -I$(top_srcdir)/source/DHCPServerUtils/include \
                        -I$(top_srcdir)/source/DHCPServerUtils/DHCPv4Server/include \
                        -I$(top_srcdir)/source/DHCPServerUtils/DHCPv6Server/include \
+                       -I$(top_srcdir)/source/DHCPServerUtils/DHCPServerSM/include \
                        -I$(top_srcdir)/source/DHCPServerUtils/utils/include \
                        -I$(top_srcdir)/source/DHCPClientUtils/DHCPv4Client/include \
                        -I$(top_srcdir)/source/DHCPClientUtils/DHCPv6Client/include \
@@ -52,7 +53,8 @@ CcspDHCPMgr_DEPENDENCIES = \
 if DHCP_SERVER_SUPPORT
 CcspDHCPMgr_DEPENDENCIES += \
         ${top_builddir}/source/DHCPServerUtils/DHCPv4Server/libCcspDhcpMgr_Dhcpv4Server.la \
-        ${top_builddir}/source/DHCPServerUtils/DHCPv6Server/libCcspDhcpMgr_Dhcpv6Server.la 
+        ${top_builddir}/source/DHCPServerUtils/DHCPv6Server/libCcspDhcpMgr_Dhcpv6Server.la  \
+        ${top_builddir}/source/DHCPServerUtils/DHCPServerSM/libCcspDhcpMgr_DhcpServerSM.la
 endif
 
 CcspDHCPMgr_CFLAGS = $(SYSTEMD_CFLAGS) $(NONROOT_CFLAGS)

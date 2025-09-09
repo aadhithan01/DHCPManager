@@ -81,9 +81,9 @@ DHCP_SERVER_STATE DhcpServerv4_Teardown(GlobalDhcpConfig *sGlbDhcpCfg)
     {
         g_Dhcpv4ServerSM.currentState = DHCP_SERVER_STATE_STOPPING;
         DhcpInterfaceConfig **pDhcpIf = NULL;
-        LanConfig *lanConfigs = NULL;
+        LanConfig lanConfigs[MAX_IFACE_COUNT];
         int LanConfig_count = 0; 
-        if(true == GetLanConfigFromProvider(lanConfigs, &LanConfig_count))
+        if(true == GetLanConfigFromProvider(&lanConfigs, &LanConfig_count))
         {
             if (lanConfigs == NULL || LanConfig_count == 0)
             {
@@ -102,6 +102,7 @@ DHCP_SERVER_STATE DhcpServerv4_Teardown(GlobalDhcpConfig *sGlbDhcpCfg)
             }
             else
             {
+                printDhcpConfig (pDhcpIf, LanConfig_count, sGlbDhcpCfg);
                 dhcpServerInit(&sGlbDhcpCfg, pDhcpIf, LanConfig_count);
             }
         }
@@ -123,23 +124,23 @@ DHCP_SERVER_STATE DhcpServerv4_preparing(GlobalDhcpConfig *sGlbDhcpCfg)
 {
     DhcpInterfaceConfig **ppDhcpCfgs = NULL;
 //    DhcpIfaces *pDhcpIfaces = NULL;
-    LanConfig *lanConfigs = NULL;
+    LanConfig lanConfigs[MAX_IFACE_COUNT];
     int LanConfig_count = 0; 
 
     memset(sGlbDhcpCfg, 0, sizeof(GlobalDhcpConfig));
 
-    if(true == GetLanConfigFromProvider(lanConfigs, &LanConfig_count))
+    if(true == GetLanConfigFromProvider(&lanConfigs, &LanConfig_count))
     {
-       if (lanConfigs == NULL || LanConfig_count == 0)
+       if (LanConfig_count == 0)
        {
                 DHCPMGR_LOG_ERROR("No LAN Configs found");
                 return DHCP_SERVER_STATE_ERROR;
        }
-        DHCPMGR_LOG_INFO("Lan Configs fetched successfully");
+        DHCPMGR_LOG_INFO("%s : %d Lan Configs fetched successfully and count is %d\n", __FUNCTION__, __LINE__, LanConfig_count);
     }
     else
     {
-        DHCPMGR_LOG_ERROR("Failed to fetch Lan Configs");
+        DHCPMGR_LOG_ERROR("%s : %d Failed to fetch Lan Configs", __FUNCTION__, __LINE__);
         return DHCP_SERVER_STATE_ERROR;
     }
     g_Dhcpv4ServerSM.currentState = DHCP_SERVER_STATE_PREPARING;
@@ -148,17 +149,18 @@ DHCP_SERVER_STATE DhcpServerv4_preparing(GlobalDhcpConfig *sGlbDhcpCfg)
 
     if (0 != Construct_dhcp_configuration(ppDhcpCfgs, LanConfig_count, NULL, sGlbDhcpCfg, lanConfigs))
     {
-        DHCPMGR_LOG_ERROR(("Failed to construct DHCP configuration\n"));
+        DHCPMGR_LOG_ERROR("%s:%d Failed to construct DHCP configuration\n", __FUNCTION__, __LINE__);
         g_Dhcpv4ServerSM.currentState = DHCP_SERVER_STATE_ERROR;
         freeMemoryDHCP(&ppDhcpCfgs, LanConfig_count, &sGlbDhcpCfg);
         return g_Dhcpv4ServerSM.currentState;
     }
     else
     {
-        DHCPMGR_LOG_INFO(("Global DHCP configuration populated successfully\n"));
+        DHCPMGR_LOG_INFO("%s: %d Global DHCP configuration populated successfully\n", __FUNCTION__, __LINE__);
+        printDhcpConfig (ppDhcpCfgs, LanConfig_count, sGlbDhcpCfg);
         if(LanConfig_count <= 0 )
         {
-            DHCPMGR_LOG_ERROR(("No LAN Configs found\n"));
+            DHCPMGR_LOG_ERROR("%s:%d No LAN Configs found\n", __FUNCTION__, __LINE__);
             g_Dhcpv4ServerSM.currentState = DHCP_SERVER_STATE_ERROR;
             freeMemoryDHCP(&ppDhcpCfgs, LanConfig_count, &sGlbDhcpCfg);
             return -1;
